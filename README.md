@@ -147,7 +147,7 @@ third_line_y=58
 ```
 ### Run the executable ###
 
-You've got four options
+You've got four options all of which also support a '-d' option for debugging information
 
 Use the default configuration in the executable
 
