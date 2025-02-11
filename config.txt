@@ -1,5 +1,6 @@
 # Train Display Configuration File
 # Lines starting with # are comments
+# Replace XXX with your settings
 
 # Station codes
 from=XXX
