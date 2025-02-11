@@ -1,3 +1,8 @@
+// Train Display - a departure board using RGB matrices and a Raspberry Pi
+// See https://github.com/jonmorrissmith/RGB_Matrix_Train_Departure_Board
+// Jon Morris Smith - Feb 2025
+// Version 1.0
+//
 #include <nlohmann/json.hpp>
 #include <led-matrix.h>
 #include <graphics.h>
