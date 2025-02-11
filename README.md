@@ -125,7 +125,7 @@ to=<your default destination - use the three letter station code>
 APIURL=<Your API URL>
 
 # Display font configuration
-fontPath=/home/display/rpi-rgb-led-matrix/fonts/9x18.bdf
+fontPath=/home/<yourpath>/rpi-rgb-led-matrix/fonts/9x18.bdf
 
 # Timing parameters (in milliseconds/seconds)
 scroll_slowdown_sleep_ms=35
