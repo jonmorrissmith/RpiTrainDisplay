@@ -170,5 +170,7 @@ Enjoy!
 # Huge thanks to... #
 With thanks to:
 [James Singleton's Huxley2](https://github.com/jpsingleton/Huxley2)
+
 [Hzeller RPI RGB LED Matrix](https://github.com/hzeller/rpi-rgb-led-matrix)
+
 [Nlohmann JSON for modern C++](https://github.com/nlohmann/json)
