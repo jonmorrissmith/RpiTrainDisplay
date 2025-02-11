@@ -1,0 +1,31 @@
+# Train Display Configuration File
+# Lines starting with # are comments
+
+# Station codes
+from=XXX
+to=XXX
+
+# API Configuration
+APIURL=https://api.XXX.com
+
+# Display font configuration
+fontPath=/home/display/rpi-rgb-led-matrix/fonts/9x18.bdf
+
+# Timing parameters (in milliseconds/seconds)
+scroll_slowdown_sleep_ms=35
+refresh_interval_seconds=60
+third_line_refresh_seconds=10
+
+# Matrix hardware configuration
+matrixcols=128
+matrixrows=64
+matrixchain_length=3
+matrixparallel=1
+matrixhardware_mapping=adafruit-hat-pwm
+gpio_slowdown=2
+
+# Display layout configuration (vertical positions)
+first_line_y=18
+second_line_y=38
+third_line_y=58
+
