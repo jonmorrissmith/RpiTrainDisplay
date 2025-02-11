@@ -1,3 +1,10 @@
+// Train Service Display - an RGB matrix departure board for the Raspberry Pi
+// Jon Morris Smith - Feb 2025
+// Version 1.0
+// Instructions, fixes and issues at https://github.com/jonmorrissmith/RGB_Matrix_Train_Departure_Board
+//
+// IMPORTANT - replace XXX in the Config class with your default settings
+//
 #include <nlohmann/json.hpp>
 #include <led-matrix.h>
 #include <graphics.h>
