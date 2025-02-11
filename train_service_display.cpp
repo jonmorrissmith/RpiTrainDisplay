@@ -5,6 +5,11 @@
 //
 // IMPORTANT - replace XXX in the Config class with your default settings
 //
+// With thanks to:
+// https://github.com/jpsingleton/Huxley2
+// https://github.com/hzeller/rpi-rgb-led-matrix
+// https://github.com/nlohmann/json
+//
 #include <nlohmann/json.hpp>
 #include <led-matrix.h>
 #include <graphics.h>
