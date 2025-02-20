@@ -61,14 +61,16 @@ You'll need to register to be able to access the data - this is pretty straightf
 
 I'll include more links later - there is a wealth of information out there on train data and a mind-boggling amount of information you can get access too (although it's not all free).  The [Open Rail Data wiki](https://wiki.openraildata.com/index.php/Main_Page) is an awesome resource as is the list of [Open Rail data repositories](https://github.com/openraildata) here on Github.
 
-**However** the data is only available from Network Rail via SOAP.  Not my forte.  If you're a Python programmer then you can go to the [Open Rail Data repository](https://github.com/openraildata) however, being an old lag, C++ is my thing.
+**However** the data is only available from Network Rail via SOAP.  Not my forte.  If you're a Python programmer then you can go to the [Open Rail Data repository](https://github.com/openraildata) however, being an old lag and liking the enhance performance of a compiled executable, C++ is my thing.
 
 ## Huxley2 to the rescue ##
 Huxley2 is a cross-platform JSON proxy for the GB railway Live Departure Boards SOAP API and is [here on Github](https://github.com/jpsingleton/Huxley2). More detail on [this site which includes a demo server](https://huxley2.azurewebsites.net)
 
-I've been working on getting this to run locally on the Pi - a work in progress - however the instructions for installing this on Azure are fabulous are are available [on this blog post](https://unop.uk/huxley-2-release).
+I've create a fork of Huxley2 with modifications for running locally on a raspberry Pi - [Huxley 2 for Raspberry Pi](https://github.com/jonmorrissmith/Huxley2_for_Raspberry_Pi)
 
-After installing this I created and API endpoint URL so have my own personal API server for the data.  James Singleton - the author of Huxley2 - is a god.
+However you can also install on Azure. The instructions for this are fabulous are are available [on this blog post](https://unop.uk/huxley-2-release).
+
+I have my own personal API server for the data locally and on Azure.  James Singleton - the author of Huxley2 - is a god.
 
 # The final Steps #
 
