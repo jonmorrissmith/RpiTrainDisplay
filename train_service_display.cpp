@@ -51,10 +51,10 @@ private:
     std::map<std::string, std::string> settings;
     
     const std::map<std::string, std::string> defaults = {
-        {"from", "XXX"},
-        {"to", "XXX"},
-        {"APIURL", "https://XXX.com"},
-        {"fontPath", "/home/XXX/rpi-rgb-led-matrix/fonts/9x18.bdf"},
+        {"from", "SAC"},
+        {"to", "STP"},
+        {"APIURL", "https://api.anotherpartialsuccess.com"},
+        {"fontPath", "/home/display/rpi-rgb-led-matrix/fonts/9x18.bdf"},
         {"scroll_slowdown_sleep_ms", "50"},
         {"refresh_interval_seconds", "60"},
         {"matrixcols", "128"},
@@ -66,7 +66,8 @@ private:
         {"first_line_y", "18"},
         {"second_line_y", "38"},
         {"third_line_y", "58"},
-        {"third_line_refresh_seconds", "10"}
+        {"third_line_refresh_seconds", "10"},
+        {"ShowCallingPointETD", "Yes"}  // Added default for ETD display
     };
 
 public:
@@ -126,9 +127,15 @@ class TrainServiceParser {
 private:
     json data;
     std::mutex dataMutex;
+    bool showCallingPointETD;  // Added flag for ETD display
 
 public:
-    TrainServiceParser() = default;
+    TrainServiceParser() : showCallingPointETD(true) {}  // Initialize with default value
+    
+    // Add setter method for the config option
+    void setShowCallingPointETD(bool show) {
+        showCallingPointETD = show;
+    }
 
     void updateData(const std::string& jsonString) {
         std::lock_guard<std::mutex> lock(dataMutex);
@@ -184,6 +191,7 @@ public:
         }
     }
 
+    // Modified to include ETDs based on configuration
     std::string getLocationNameList(size_t serviceIndex) {
         std::lock_guard<std::mutex> lock(dataMutex);
         try {
@@ -197,10 +205,40 @@ public:
             for (size_t i = 0; i < callingPoints.size(); ++i) {
                 if (i > 0) ss << ", ";
                 ss << callingPoints[i]["locationName"].get<std::string>();
+                
+                // Add estimated time in brackets if available and if enabled in config
+                if (showCallingPointETD && 
+                    callingPoints[i].find("et") != callingPoints[i].end() && 
+                    !callingPoints[i]["et"].get<std::string>().empty()) {
+                    ss << " (" << callingPoints[i]["et"].get<std::string>() << ")";
+                }
             }
             return ss.str();
         } catch (const json::exception& e) {
             throw std::runtime_error("Error creating location name list: " + std::string(e.what()));
+        }
+    }
+
+    // Added method to get delay reason
+    std::string getDelayReason(size_t serviceIndex) {
+        std::lock_guard<std::mutex> lock(dataMutex);
+        try {
+            if (serviceIndex >= data["trainServices"].size()) {
+                throw std::out_of_range("Service index out of range");
+            }
+            
+            // Check if the service is delayed
+            std::string etd = data["trainServices"][serviceIndex]["etd"].get<std::string>();
+            if (etd != "On time" && etd != "Cancelled" && etd != "Delayed") {
+                // If delayReason exists and isn't empty, return it
+                if (data["trainServices"][serviceIndex].find("delayReason") != data["trainServices"][serviceIndex].end() && 
+                    !data["trainServices"][serviceIndex]["delayReason"].get<std::string>().empty()) {
+                    return data["trainServices"][serviceIndex]["delayReason"].get<std::string>();
+                }
+            }
+            return ""; // No delay or no reason provided
+        } catch (const json::exception& e) {
+            return ""; // Return empty string in case of error
         }
     }
 };
@@ -258,6 +296,9 @@ public:
           white(255, 255, 255), black(0, 0, 0), 
           parser(p), running(true), config(cfg) {
     
+        // Set parser options from config
+        parser.setShowCallingPointETD(config.get("ShowCallingPointETD") == "Yes");
+    
         if (!font.LoadFont(config.get("fontPath").c_str())) {
             throw std::runtime_error("Font loading failed for: " + config.get("fontPath"));
         }
@@ -293,6 +334,12 @@ public:
                                      parser.getEstimatedDepartureTime(0);
                 
                 std::string calling_points = parser.getLocationNameList(0);
+
+                // Get delay reason if the first train is delayed
+                std::string delay_reason = parser.getDelayReason(0);
+                if (!delay_reason.empty()) {
+                    calling_points += " - DELAY REASON: " + delay_reason;
+                }
 
                 std::string second_line = num_services > 1 ? 
                     "2nd " + parser.getScheduledDepartureTime(1) + " " + 
@@ -439,26 +486,143 @@ int main(int argc, char* argv[]) {
     DEBUG_PRINT("From: " << config.get("from"));
     DEBUG_PRINT("To: " << config.get("to"));
     DEBUG_PRINT("API URL: " << config.get("APIURL"));
+    DEBUG_PRINT("Show Calling Point ETD: " << config.get("ShowCallingPointETD"));
 
+try {
+    RGBMatrix::Options matrix_options;
+    matrix_options.rows = config.getInt("matrixrows");
+    matrix_options.cols = config.getInt("matrixcols");
+    matrix_options.chain_length = config.getInt("matrixchain_length");
+    matrix_options.parallel = config.getInt("matrixparallel");
+
+    // Set hardware mapping
+    static std::string hardware_mapping_str = config.get("matrixhardware_mapping");
+    matrix_options.hardware_mapping = hardware_mapping_str.c_str();
+    
+    // Add new RGB Matrix parameters from config - with error handling
     try {
-        RGBMatrix::Options matrix_options;
-        matrix_options.rows = config.getInt("matrixrows");
-        matrix_options.cols = config.getInt("matrixcols");
-        matrix_options.chain_length = config.getInt("matrixchain_length");
-        matrix_options.parallel = config.getInt("matrixparallel");
-
-        static std::string hardware_mapping_str = config.get("matrixhardware_mapping");
-        matrix_options.hardware_mapping = hardware_mapping_str.c_str();
-        
-        RuntimeOptions runtime_opt;
-        runtime_opt.gpio_slowdown = config.getInt("gpio_slowdown");
-
-        DEBUG_PRINT("Creating matrix with hardware mapping: '" << hardware_mapping_str << "'");
-        
-        RGBMatrix* matrix = RGBMatrix::CreateFromOptions(matrix_options, runtime_opt);
-        if (matrix == nullptr) {
-            throw std::runtime_error("Could not create matrix");
+        matrix_options.multiplexing = config.getInt("led-multiplexing");
+    } catch (const std::exception& e) {
+        DEBUG_PRINT("Warning: using default multiplexing");
+    }
+    
+    // Handle pixel mapper if set
+    try {
+        static std::string pixel_mapper_str = config.get("led-pixel-mapper");
+        if (!pixel_mapper_str.empty()) {
+            matrix_options.pixel_mapper_config = pixel_mapper_str.c_str();
         }
+    } catch (const std::exception& e) {
+        DEBUG_PRINT("Warning: using default pixel mapper");
+    }
+    
+    try {
+        matrix_options.pwm_bits = config.getInt("led-pwm-bits");
+    } catch (const std::exception& e) {
+        DEBUG_PRINT("Warning: using default pwm bits");
+    }
+    
+    try {
+        matrix_options.brightness = config.getInt("led-brightness");
+    } catch (const std::exception& e) {
+        DEBUG_PRINT("Warning: using default brightness");
+    }
+    
+    try {
+        matrix_options.scan_mode = config.getInt("led-scan-mode");
+    } catch (const std::exception& e) {
+        DEBUG_PRINT("Warning: using default scan mode");
+    }
+    
+    try {
+        matrix_options.row_address_type = config.getInt("led-row-addr-type");
+    } catch (const std::exception& e) {
+        DEBUG_PRINT("Warning: using default row address type");
+    }
+    
+    // Handle boolean parameters with string comparison
+    try {
+        matrix_options.show_refresh_rate = (config.get("led-show-refresh") == "true");
+    } catch (const std::exception& e) {
+        DEBUG_PRINT("Warning: using default refresh rate display setting");
+    }
+    
+    // Handle refresh rate limit
+    try {
+        matrix_options.limit_refresh_rate_hz = config.getInt("led-limit-refresh");
+    } catch (const std::exception& e) {
+        DEBUG_PRINT("Warning: using default refresh rate limit");
+    }
+    
+    // Set inverse colors
+    try {
+        matrix_options.inverse_colors = (config.get("led-inverse") == "true");
+    } catch (const std::exception& e) {
+        DEBUG_PRINT("Warning: using default color inversion setting");
+    }
+    
+    // Handle RGB sequence
+    try {
+        static std::string rgb_sequence_str = config.get("led-rgb-sequence");
+        if (!rgb_sequence_str.empty() && rgb_sequence_str.length() == 3) {
+            matrix_options.led_rgb_sequence = rgb_sequence_str.c_str();
+        } else {
+            DEBUG_PRINT("Warning: led-rgb-sequence must be exactly 3 characters. Using default.");
+        }
+    } catch (const std::exception& e) {
+        DEBUG_PRINT("Warning: using default RGB sequence");
+    }
+    
+    // Set PWM LSB nanoseconds
+    try {
+        matrix_options.pwm_lsb_nanoseconds = config.getInt("led-pwm-lsb-nanoseconds");
+    } catch (const std::exception& e) {
+        DEBUG_PRINT("Warning: using default PWM LSB nanoseconds");
+    }
+    
+    // Set PWM dither bits
+    try {
+        matrix_options.pwm_dither_bits = config.getInt("led-pwm-dither-bits");
+    } catch (const std::exception& e) {
+        DEBUG_PRINT("Warning: using default PWM dither bits");
+    }
+    
+    // Handle hardware pulse setting
+    try {
+        matrix_options.disable_hardware_pulsing = (config.get("led-no-hardware-pulse") == "true");
+    } catch (const std::exception& e) {
+        DEBUG_PRINT("Warning: using default hardware pulsing setting");
+    }
+    
+    // Handle panel type if set
+    try {
+        static std::string panel_type_str = config.get("led-panel-type");
+        if (!panel_type_str.empty()) {
+            matrix_options.panel_type = panel_type_str.c_str();
+        }
+    } catch (const std::exception& e) {
+        DEBUG_PRINT("Warning: using default panel type");
+    }
+    
+    // Runtime options - using only the supported options
+    RuntimeOptions runtime_opt;
+    runtime_opt.gpio_slowdown = config.getInt("gpio_slowdown");
+    
+    // Handle daemon mode if supported in your version
+    try {
+        if (config.get("led-daemon") == "true") {
+            runtime_opt.daemon = 1;
+        }
+    } catch (const std::exception& e) {
+        DEBUG_PRINT("Warning: using default daemon mode setting");
+    }
+    
+    DEBUG_PRINT("Creating matrix with hardware mapping: '" << hardware_mapping_str << "'");
+    
+    RGBMatrix* matrix = RGBMatrix::CreateFromOptions(matrix_options, runtime_opt);
+    if (matrix == nullptr) {
+        throw std::runtime_error("Could not create matrix");
+    }
 
         // Make initial API call
         std::string api_data = callAPI(config.get("from"), config.get("to"), 
@@ -467,6 +631,9 @@ int main(int argc, char* argv[]) {
         // Create parser and display
         TrainServiceParser parser;
         parser.updateData(api_data);
+        
+        // Set the ShowCallingPointETD configuration value from config
+        parser.setShowCallingPointETD(config.get("ShowCallingPointETD") == "Yes");
 
         TrainServiceDisplay display(matrix, parser, config);
         display.run();
