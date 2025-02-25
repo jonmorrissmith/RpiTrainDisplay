@@ -51,10 +51,10 @@ private:
     std::map<std::string, std::string> settings;
     
     const std::map<std::string, std::string> defaults = {
-        {"from", "SAC"},
-        {"to", "STP"},
-        {"APIURL", "https://api.anotherpartialsuccess.com"},
-        {"fontPath", "/home/display/rpi-rgb-led-matrix/fonts/9x18.bdf"},
+        {"from", "<your default departure - use the three letter station code>"},
+        {"to", "<your default destination point - use the three letter station code>"},
+        {"APIURL", "<URL for your train info API>"},
+        {"fontPath", "/home/<your path>/rpi-rgb-led-matrix/fonts/9x18.bdf"},
         {"scroll_slowdown_sleep_ms", "50"},
         {"refresh_interval_seconds", "60"},
         {"matrixcols", "128"},
