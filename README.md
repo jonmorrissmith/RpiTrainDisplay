@@ -158,7 +158,7 @@ Either Azure or local is good.  At the time of writing the periodic local API qu
 # The final Steps #
 
 ## Installing the RGB Matrix Train Departure Board software ##
-From this repository - 'git clone https://github.com/jonmorrissmith/RGB_Matrix_Train_Departure_Board'
+From this repository - `git clone https://github.com/jonmorrissmith/RGB_Matrix_Train_Departure_Board`
 
 Edit the configuration class in to provide default settings:
 ```// Configuration class
