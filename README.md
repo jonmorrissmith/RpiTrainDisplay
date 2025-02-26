@@ -1,16 +1,21 @@
 # RGB Matrix Train Departure Board
-You can build you're own train departure board showing the next train from your favourite station to your favourite destination, where it's calling, and the following two departures
+You can build you're own train departure board showing the next train from your favourite station to your favourite destination, where it's calling, and the following two departures.
+
+The project uses a Raspberry Pi with RGB LED matrices and has a range of configuration options.
 
 # Motivation
 Being a life-long train fan I've always wanted my own departure board... and as a regular commuter I wanted one which shows my usual route.
+
 Over the years I've looked at flip-dot displays and various other mechanisms and then saw LED dot-matrix displays become available for purchase.
 
-These look amazing... however the price and monthly-subscription was offputting so I thought "I wonder if I could build one for less".
+These look amazing... however the price and monthly-subscription was offputting.
+
+So I thought "I wonder if I could build one for less".
 
 And here we are.
 
 # This documentation is evolving
-In this second version (24th Feb 2025) there's still gaps, however it's a lot more complete than it was!
+In this second version (26th Feb 2025) there's still gaps, however it's a lot more complete than it was!
 Happy to help with any questions - best to do that via github so others can share the wisdom!
 
 # Hardware
@@ -23,7 +28,8 @@ Happy to help with any questions - best to do that via github so others can shar
 ## Some RGB matrix boards.
 I purchased [three P2, 5V, 128*64 pixel colour modules with a HUB75E interface from Ali Express](https://www.aliexpress.com/item/32913063042.html).
 
-Three is a good size and three is limit for a chain of panels with the matrix library I used.  However you could have up to three rows - which might be nice (note to self - explore this option. It might "just work")
+Three is a good size and three is limit for a chain of panels with the matrix library I used.  However you could have up to three rows of three.
+
 There are a myriad sellers on Ali Express and elsewhere. I suspect there's little to differentiate between offerings.
 
 ## A Raspberry Pi
@@ -31,7 +37,7 @@ You could purchase [a 1GB Raspberry Pi 4 from Pimoroni](https://shop.pimoroni.co
 
 I used a Raspberry Pi 4 which was unloved and needed a new purpose. 
 
-**Note** that the RGB matrix library doesn't yet work with a Pi 5.
+**Note** that the RGB matrix library doesn't yet work with a Pi 5. I'll update when it does as the increased power of the Pi 5 will be welcome!
 
 ## An RGB matrix-driver 
 This project was built with an [Adafruit RGB Matrix Bonnet for Raspberry Pi from Pimoroni](https://shop.pimoroni.com/products/adafruit-rgb-matrix-bonnet-for-raspberry-pi?variant=2257849155594)
@@ -57,6 +63,7 @@ I'll provde more detail on this - the important bit (for my configuration) was t
 * Connect pins 4 and 18 on the Adafruit bonnet
 * Melt a blob of solder between the center “E” pad and the “8” pad just above it on the bottom of the bonnet
 * I had to chop some pins off a connector on the Pi as it hit the bonnet - I suspect I may regret that at some point when the Pi gets used for something else
+
 Have a read of the [if you have and Adafruit Hat or Bonnet](https://github.com/hzeller/rpi-rgb-led-matrix?tab=readme-ov-file#if-you-have-an-adafruit-hat-or-bonnet) section of the RPI RGB LED Matrix documentation.
 
 # Setting up the Raspberry Pi #
@@ -67,7 +74,9 @@ There are more tutorials than you can shake a stick at on how to install an OS o
 
 I went for the 'standard build' - although a cut-down OS may be an option - and configured Wifi and ssh connectivity as build options. The aim here is to maximise CPU cycles the matrix driver can use.
 
-Once installed there was the usual upgrade/update to make sure everything is current and shiny.
+Once installed there was the usual upgrade/update and disable/uninstall anything unecessary - see (using a minimal raspbian distribution)[https://github.com/hzeller/rpi-rgb-led-matrix?tab=readme-ov-file#use-minimal-raspbian-distribution] for more detail.
+
+**Note** At the rsk of stating the obvious, when adding options to `cmdline.txt` put them on the same line as the existing arguments. No newlines allowed.
 
 ## Install the RGB Matrix Software ##
 
@@ -95,7 +104,7 @@ I've create a fork of Huxley2 with modifications for running locally on a raspbe
 
 However you can also install on Azure. The instructions for this are fabulous are are available [on this blog post](https://unop.uk/huxley-2-release).
 
-I went for the local install as it means a free data-source... not that the cost of running on Azure is in any way punitive given the microscopic workload.
+Either Azure or local is good.  At the time of writing the periodic local API query causes the display to flicker, however there are still performance tuning options to deal with this.
 
 # The final Steps #
 
@@ -117,18 +126,20 @@ private:
         {"to", "<your default destination point - use the three letter station code>"},
         {"APIURL", "<URL for your train info API>"},
         {"fontPath", "/home/<your path>/rpi-rgb-led-matrix/fonts/9x18.bdf"},
-        {"scroll_slowdown_sleep_ms", "50"},
-        {"refresh_interval_seconds", "60"},
-        {"matrixcols", "128"},
-        {"matrixrows", "64"},
-        {"matrixchain_length", "3"},
-        {"matrixparallel", "1"},
-        {"matrixhardware_mapping", "adafruit-hat-pwm"},
-        {"gpio_slowdown", "4"},
-        {"first_line_y", "18"},
-        {"second_line_y", "38"},
-        {"third_line_y", "58"},
-        {"third_line_refresh_seconds", "10"}
+        {"scroll_slowdown_sleep_ms", "50"},                //adjust the speed of the scroll
+        {"refresh_interval_seconds", "60"},                //how often the train data is refresehd
+        {"matrixcols", "128"},                             //number of LED columns in a matrix panel
+        {"matrixrows", "64"},                              //number of LED rows in a matrix panel
+        {"matrixchain_length", "3"},                       //how many panels you've got joined together horizontally
+        {"matrixparallel", "1"},                           //how many rows of panels you've got
+        {"matrixhardware_mapping", "adafruit-hat-pwm"},    //hardware mapping
+        {"gpio_slowdown", "4"},                            //performance tuning
+        {"first_line_y", "18"},                            //where the first line of text will appear
+        {"second_line_y", "38"},                           //where the second line of text will appear
+        {"third_line_y", "58"},                            //where the third line of text will appear
+        {"third_line_refresh_seconds", "10"}               //how often the third row will change
+        {"ShowCallingPointETD", "Yes"},                    //shows the estimated time of departure for each calling point.
+        {"ShowMessages", "Yes"}                            //show any messages on the third row in adddition to the 2nd and 3rd departures
     };
 ```
 
@@ -171,6 +182,42 @@ gpio_slowdown=2
 first_line_y=18
 second_line_y=38
 third_line_y=58
+
+# Feature configuration
+ShowCallingPointETD=No
+ShowMessages=No
+
+# RGB Matrix Library Configuration Parameters - DO NOT modify parameter names
+
+# Panel type settings
+led-multiplexing=0
+led-pixel-mapper=
+led-panel-type=
+
+# Display quality settings
+led-pwm-bits=11
+led-brightness=100
+led-scan-mode=0
+led-row-addr-type=0
+
+# Refresh rate settings
+led-show-refresh=false
+led-limit-refresh=0
+
+# Color settings
+led-inverse=false
+led-rgb-sequence=RGB
+
+# Advanced PWM settings
+led-pwm-lsb-nanoseconds=130
+led-pwm-dither-bits=0
+led-no-hardware-pulse=false
+
+# Privilege/daemon settings
+led-daemon=false
+led-no-drop-privs=false
+led-drop-priv-user=daemon
+led-drop-priv-group=daemon
 ```
 ### Run the executable ###
 
@@ -180,7 +227,7 @@ Use the default configuration in the executable
 
 `sudo ./train_service_display`
 
-Use the default configuration in the executable and specify origin and/or destination
+Use the default configuration in the executable and specify origin and destination
 
 `sudo ./train_service_display SAC STP`
 
