@@ -20,8 +20,8 @@ Happy to help with any questions - best to do that via github so others can shar
 
 # Hardware
 ## The TL:DR
-* [three P2, 5V, 128*64 pixel colour modules with a HUB75E interface from Ali Express](https://www.aliexpress.com/item/32913063042.html)
-* [a 1GB Raspberry Pi 4 from Pimoroni](https://shop.pimoroni.com/products/raspberry-pi-4?variant=31856486416467)
+* [Three P2, 5V, 128*64 pixel colour modules with a HUB75E interface from Ali Express](https://www.aliexpress.com/item/32913063042.html)
+* [A 1GB Raspberry Pi 4 from Pimoroni](https://shop.pimoroni.com/products/raspberry-pi-4?variant=31856486416467)
 * [Adafruit RGB Matrix Bonnet for Raspberry Pi from Pimoroni](https://shop.pimoroni.com/products/adafruit-rgb-matrix-bonnet-for-raspberry-pi?variant=2257849155594)
 * A 5V power-supply capable of delivering at least 5 Amps
 
@@ -42,29 +42,34 @@ I used a Raspberry Pi 4 which was unloved and needed a new purpose.
 ## An RGB matrix-driver 
 This project was built with an [Adafruit RGB Matrix Bonnet for Raspberry Pi from Pimoroni](https://shop.pimoroni.com/products/adafruit-rgb-matrix-bonnet-for-raspberry-pi?variant=2257849155594)
 
-Specification on the [Adafruit site](https://learn.adafruit.com/adafruit-rgb-matrix-bonnet-for-raspberry-pi).  If there are other mechanisms which folk can recommend then let me know!
+Specification on the [Adafruit site](https://learn.adafruit.com/adafruit-rgb-matrix-bonnet-for-raspberry-pi).  
+
+If there are other mechanisms which folk can recommend then let me know!  
 
 ## 16 way ribbon cable
 Most sellers provide these with the matrix panels. If you're making your own then your mantra has to be "Short Is Good".
 
 ## Some power!
-I used a bench-top adjustable power supply to provide 5v for the matrix boards and the Raspberry Pi.
+I used a bench-top adjustable power supply to provide 5v and up to 5A for the matrix boards and the Raspberry Pi.
 
-The nature of the panels means that current can vary quite wildly.  For the departure board with three panels it runs at about 1.5 to 2.0 Amps.
+The nature of the panels means that current can vary quite wildly.  For the departure board with three panels it runs at about 1.5A to 2.0A.
 
-I'd recommend getting something substantial as the "all pixels on" power is likely to be more... and let's face it, you're going to want to play about with it!
+I'd recommend getting something substantial as the "all pixels on" power is just around 3.5A with my configuration... and let's face it, you're going to want to play about with it!
+
+The [Words about power](https://github.com/hzeller/rpi-rgb-led-matrix/blob/master/wiring.md#a-word-about-power) in the RGB Matrix documentation is worth a read.
 
 ## Anything else on hardware?
 I'd highly recommend reading the detail on the [hzeller rpi-rgb-led-matrix - Let's Do It!](https://github.com/hzeller/rpi-rgb-led-matrix?tab=readme-ov-file#lets-do-it) documentation as it answers every question you can think of.
 It's an awesome resource and fabulous software. More of that below!
 
 ## Putting it all together
+Details below are for the Adafruit Bonnet - more detail on other connection option is available in the [RGB Matrix - wiring](https://github.com/hzeller/rpi-rgb-led-matrix/blob/master/wiring.md) documentation.
 I'll provde more detail on this - the important bit (for my configuration) was the modifications to:
-* Connect pins 4 and 18 on the Adafruit bonnet
-* Melt a blob of solder between the center “E” pad and the “8” pad just above it on the bottom of the bonnet
-* I had to chop some pins off a connector on the Pi as it hit the bonnet - I suspect I may regret that at some point when the Pi gets used for something else
+* Connect pins 4 and 18 on the Adafruit bonnet.
+* Melt a blob of solder between the center “E” pad and the “8” pad just above it on the bottom of the bonnet.
+* I had to chop some pins off a connector on the Pi as it hit the bonnet - I suspect I may regret that at some point when the Pi gets used for something else.
 
-Have a read of the [if you have and Adafruit Hat or Bonnet](https://github.com/hzeller/rpi-rgb-led-matrix?tab=readme-ov-file#if-you-have-an-adafruit-hat-or-bonnet) section of the RPI RGB LED Matrix documentation.
+
 
 # Setting up the Raspberry Pi #
 
@@ -72,21 +77,65 @@ Have a read of the [if you have and Adafruit Hat or Bonnet](https://github.com/h
 
 There are more tutorials than you can shake a stick at on how to install an OS on a Raspberry Pi.
 
-I went for the 'standard build' - although a cut-down OS may be an option - and configured Wifi and ssh connectivity as build options. The aim here is to maximise CPU cycles the matrix driver can use.
+I went for the 'OS Lite (64bit)' maximise CPU cycles the matrix driver can use by having a cut-down OS. Set up ssh and Wifi in the Raspberry Pi Imager tool.
 
-Once installed there was the usual upgrade/update and disable/uninstall anything unecessary - see [using a minimal raspbian distribution](https://github.com/hzeller/rpi-rgb-led-matrix?tab=readme-ov-file#use-minimal-raspbian-distribution) for more detail.
+Once installed there was the usual upgrade/update and disable/uninstall anything unecessary.
+
+I would strongly recommend following [using a minimal raspbian distribution](https://github.com/hzeller/rpi-rgb-led-matrix?tab=readme-ov-file#use-minimal-raspbian-distribution) for more detail.
+
+What is described what I did in Feb 2025. Detail in the rpi-rgb-matrix repository will be the most recent recommendations.
+
+* Set `dtparam=audio=off` in `/boot/firmware/config.txt`
+* Add `isolcpus=3` **to the end** of the parameters in `/boot/firmware/cmdline.txt` to isolate a CPU.
+* Example - `console=serial0,115200 console=tty1 root=PARTUUID=9f23843a-02 rootfstype=ext4 fsck.repair=yes rootwait cfg80211.ieee80211_regdom=GB isolcpus=3`
+* Remove unecessary services with `sudo apt-get remove bluez bluez-firmware pi-bluetooth triggerhappy pigpio`
+
+run `lsmod` and to check for the snd_bcm2835 module.
+
+Example:
+```
+$lsmod | grep snd_bcm2835
+snd_bcm2835            24576  0
+snd_pcm               139264  5 snd_bcm2835,snd_soc_hdmi_codec,snd_compress,snd_soc_core,snd_pcm_dmaengine
+snd                   110592  6 snd_bcm2835,snd_soc_hdmi_codec,snd_timer,snd_compress,snd_soc_core,snd_pcm
+```
+If it's there then blacklist it:
+```
+cat <<EOF | sudo tee /etc/modprobe.d/blacklist-rgb-matrix.conf
+blacklist snd_bcm2835
+EOF
+
+sudo update-initramfs -u
+```
+Then reboot - `sudo reboot` to get a nice clean and sparkly install.
 
 **Note** At the rsk of stating the obvious, when adding options to `cmdline.txt` put them on the same line as the existing arguments. No newlines allowed.
 
+## Installing packages you'll need
+In no particular order:
+* Git - `sudo apt install git`.
+* JSON for modern C++ - `sudo apt install nlohmann-json3-dev`.
+* curl (should be there already) - `sudo apt install libcurl4`.
+* curl C++ wrappers - `sudo apt install libcurlpp-dev`.
+
+
 ## Install the RGB Matrix Software ##
 
-Log in, download and install the goodness from the [hzeller rpi-rgb-led-matrix repository](https://github.com/hzeller/rpi-rgb-led-matrix).
+Take a clone of the RPI RGB Matrix repository - `git clone https://github.com/hzeller/rpi-rgb-led-matrix`.
 
-I can't recall the options at installation time, but I went for the 'performance' option (or similar named).
+Compile the library
+```
+cd rpi-rgb-matrix
+make
+```
+A pre-emptive read of the [Troubleshooting section](https://github.com/hzeller/rpi-rgb-led-matrix?tab=readme-ov-file#troubleshooting) will help you get ahead of issues.
 
-Build and run the demos and have fun! 
-
-A pre-emptive read of the [Troubleshooting section)](https://github.com/hzeller/rpi-rgb-led-matrix?tab=readme-ov-file#troubleshooting) will help you get ahead of issues.
+Enjoy the demos in the `examples-api-use` directory.
+If you've got the configuration described here then you can start with this:
+```
+sudo ./demo -D9 --led-rows=64 --led-cols=128 --led-chain=3 --led-gpio-mapping=adafruit-hat
+```
+Have fun!
 
 # So what about the train data? #
 The source of the data is the [Live Departure Boards Web Service (LDBWS / OpenLDBWS)](https://lite.realtime.nationalrail.co.uk/OpenLDBWS/)
@@ -98,9 +147,9 @@ I'll include more links later - there is a wealth of information out there on tr
 **However** the data is only available from Network Rail via SOAP.  Not my forte.  If you're a Python programmer then you can go to the [Open Rail Data repository](https://github.com/openraildata) however, being an old lag and liking the enhanced performance of a compiled executable, C++ was the way to go.  I'm not about to try to ingest SOAP with C++.
 
 ## Huxley2 to the rescue ##
-Huxley2 is a cross-platform JSON proxy for the GB railway Live Departure Boards SOAP API and is [here on Github](https://github.com/jpsingleton/Huxley2). More detail on [this site which includes a demo server](https://huxley2.azurewebsites.net)
+Huxley2 is a cross-platform JSON proxy for the GB railway Live Departure Boards SOAP API and is [here on Github](https://github.com/jpsingleton/Huxley2). More detail on [this site which includes a demo server](https://huxley2.azurewebsites.net).
 
-I've create a fork of Huxley2 with modifications for running locally on a raspberry Pi - [Huxley 2 for Raspberry Pi](https://github.com/jonmorrissmith/jonms-Huxley2)
+I've create a fork of Huxley2 with modifications for running locally on a raspberry Pi - [Huxley 2 for Raspberry Pi](https://github.com/jonmorrissmith/jonms-Huxley2).
 
 However you can also install on Azure. The instructions for this are fabulous are are available [on this blog post](https://unop.uk/huxley-2-release).
 
@@ -109,13 +158,9 @@ Either Azure or local is good.  At the time of writing the periodic local API qu
 # The final Steps #
 
 ## Installing the RGB Matrix Train Departure Board software ##
-The biggest dependency here is the [JSON for modern C++](https://json.nlohmann.me/) which you can find [here on github](https://github.com/nlohmann/json)
+From this repository - 'git clone https://github.com/jonmorrissmith/RGB_Matrix_Train_Departure_Board'
 
-Easiest to install via your [favourite package manager](https://github.com/nlohmann/json?tab=readme-ov-file#package-managers) - I used homebrew.
-
-## Install the Train Display Software ##
-
-Download train_service_display.cpp from this repository and edit the configuration class to provide default settings:
+Edit the configuration class in to provide default settings:
 ```// Configuration class
 class Config {
 private:
@@ -143,14 +188,25 @@ private:
     };
 ```
 
-And compile!
+And compile (may take a while)!
 
-`g++ -O3 -std=c++11 train_service_display.cpp -o train_service_display -lrgbmatrix -lcurl -lpthread -I/home/<your path>/rpi-rgb-led-matrix/include -L/<your path>/display/rpi-rgb-led-matrix/lib`
+`g++ -O3 -std=c++11 train_service_display.cpp -o train_service_display -lrgbmatrix -lcurl -lpthread -I/home/<your path>/rpi-rgb-led-matrix/include -L/home/<your path>/rpi-rgb-led-matrix/lib`
 
 # And finally Cyril... and finally Esther #
+## Permissions for your home directory ##
+You need to make your home directory world readable.
+```
+cd
+cd ..
+ls
+```
+and you'll see your home directory.
+Make this world-readable `chmod 755 <home directory name>`
 
-## Create your configuration file ##
-This can be used to over-ride settings in the configuration class and other customisations
+## Tweak your configuration file ##
+This can be used to over-ride settings in the configuration class and other customisations.
+
+Detail of the RGB Matrix library parameters is available [here in the RGB Matrix documentation](https://github.com/hzeller/rpi-rgb-led-matrix/blob/master/README.md#changing-parameters-via-command-line-flags)
 
 ```# Train Display Configuration File
 # Lines starting with # are comments
@@ -240,6 +296,11 @@ Combination of the above
 `sudo ./train_service_display SAC STP -f <config file>`
 
 Enjoy!
+
+### Troubleshooting ###
+I suspect that most of this will centre around the RGB display library:
+* [Changing parameters](https://github.com/hzeller/rpi-rgb-led-matrix/blob/master/README.md#changing-parameters-via-command-line-flags)
+* [Troubleshooting](https://github.com/hzeller/rpi-rgb-led-matrix/blob/master/README.md#troubleshooting)
 
 # Huge thanks to... #
 
