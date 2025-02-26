@@ -74,7 +74,7 @@ There are more tutorials than you can shake a stick at on how to install an OS o
 
 I went for the 'standard build' - although a cut-down OS may be an option - and configured Wifi and ssh connectivity as build options. The aim here is to maximise CPU cycles the matrix driver can use.
 
-Once installed there was the usual upgrade/update and disable/uninstall anything unecessary - see (using a minimal raspbian distribution)[https://github.com/hzeller/rpi-rgb-led-matrix?tab=readme-ov-file#use-minimal-raspbian-distribution] for more detail.
+Once installed there was the usual upgrade/update and disable/uninstall anything unecessary - see [using a minimal raspbian distribution](https://github.com/hzeller/rpi-rgb-led-matrix?tab=readme-ov-file#use-minimal-raspbian-distribution) for more detail.
 
 **Note** At the rsk of stating the obvious, when adding options to `cmdline.txt` put them on the same line as the existing arguments. No newlines allowed.
 
@@ -145,7 +145,7 @@ private:
 
 And compile!
 
-`g++ -std=c++11 train_service_display.cpp -o train_service_display -lrgbmatrix -lcurl -lpthread -I/home/<your path>/rpi-rgb-led-matrix/include -L/<your path>/display/rpi-rgb-led-matrix/lib`
+`g++ -O3 -std=c++11 train_service_display.cpp -o train_service_display -lrgbmatrix -lcurl -lpthread -I/home/<your path>/rpi-rgb-led-matrix/include -L/<your path>/display/rpi-rgb-led-matrix/lib`
 
 # And finally Cyril... and finally Esther #
 
