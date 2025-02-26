@@ -1,6 +1,6 @@
 # Train Display Configuration File
 # Lines starting with # are comments
-# Replace XXX with your parameters
+# Replace XXX with your configuration
 
 # Default Station codes
 from=XXX
@@ -10,7 +10,7 @@ to=XXX
 APIURL=https://XXX
 
 # Display font configuration
-fontPath=/home/XXX/9x18.bdf
+fontPath=/home/XXX/fonts/9x18.bdf
 
 # Timing parameters (in milliseconds/seconds)
 scroll_slowdown_sleep_ms=35
@@ -30,13 +30,12 @@ first_line_y=18
 second_line_y=38
 third_line_y=58
 
-# Feature configuration - setting this to Yes displays the estimated time of departure for calling points
-ShowCallingPointETD=Yes
+# Feature configuration
+ShowCallingPointETD=No
+ShowMessages=No
 
-# RGB Matrix Library Configuration Parameters - DO NOT modify parameter names.  
-
-# It's unlikely you'll need to edit these, but since they're configurable options they're here just in case
-# See the rgb-matrix library documentation for how to use these
+# RGB Matrix Library Configuration Parameters - DO NOT modify parameter names
+# it's unlikely you'll need to modify these - see https://github.com/hzeller/rpi-rgb-led-matrix for details
 
 # Panel type settings
 led-multiplexing=0
@@ -67,4 +66,3 @@ led-daemon=false
 led-no-drop-privs=false
 led-drop-priv-user=daemon
 led-drop-priv-group=daemon
-
