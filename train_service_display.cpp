@@ -51,10 +51,10 @@ private:
     std::map<std::string, std::string> settings;
     
     const std::map<std::string, std::string> defaults = {
-        {"from", "<your default departure - use the three letter station code>"},
-        {"to", "<your default destination point - use the three letter station code>"},
-        {"APIURL", "<URL for your train info API>"},
-        {"fontPath", "/home/<your path>/rpi-rgb-led-matrix/fonts/9x18.bdf"},
+        {"from", "XXX"},
+        {"to", "XXX"},
+        {"APIURL", "https://XXX"},
+        {"fontPath", "/home/XXX/fonts/9x18.bdf"},
         {"scroll_slowdown_sleep_ms", "50"},
         {"refresh_interval_seconds", "60"},
         {"matrixcols", "128"},
@@ -67,7 +67,8 @@ private:
         {"second_line_y", "38"},
         {"third_line_y", "58"},
         {"third_line_refresh_seconds", "10"},
-        {"ShowCallingPointETD", "Yes"}  // Added default for ETD display
+        {"ShowCallingPointETD", "Yes"},
+        {"ShowMessages", "Yes"} 
     };
 
 public:
@@ -128,6 +129,20 @@ private:
     json data;
     std::mutex dataMutex;
     bool showCallingPointETD;  // Added flag for ETD display
+    std::string processHtmlTags(const std::string& html) {
+        std::string result;
+        bool inTag = false;
+        for (size_t i = 0; i < html.length(); ++i) {
+            if (html[i] == '<') {
+                inTag = true;
+            } else if (html[i] == '>') {
+                inTag = false;
+            } else if (!inTag) {
+                result += html[i];
+            }
+        }
+        return result;
+    }
 
 public:
     TrainServiceParser() : showCallingPointETD(true) {}  // Initialize with default value
@@ -191,32 +206,46 @@ public:
         }
     }
 
-    // Modified to include ETDs based on configuration
     std::string getLocationNameList(size_t serviceIndex) {
-        std::lock_guard<std::mutex> lock(dataMutex);
-        try {
-            if (serviceIndex >= data["trainServices"].size()) {
-                throw std::out_of_range("Service index out of range");
-            }
-            const auto& service = data["trainServices"][serviceIndex];
-            const auto& callingPoints = service["subsequentCallingPoints"][0]["callingPoint"];
+    std::lock_guard<std::mutex> lock(dataMutex);
+    try {
+        if (serviceIndex >= data["trainServices"].size()) {
+            throw std::out_of_range("Service index out of range");
+        }
+        const auto& service = data["trainServices"][serviceIndex];
+        const auto& callingPoints = service["subsequentCallingPoints"][0]["callingPoint"];
+        
+        std::stringstream ss;
+        for (size_t i = 0; i < callingPoints.size(); ++i) {
+            if (i > 0) ss << ", ";
+            ss << callingPoints[i]["locationName"].get<std::string>();
             
-            std::stringstream ss;
-            for (size_t i = 0; i < callingPoints.size(); ++i) {
-                if (i > 0) ss << ", ";
-                ss << callingPoints[i]["locationName"].get<std::string>();
-                
-                // Add estimated time in brackets if available and if enabled in config
-                if (showCallingPointETD && 
-                    callingPoints[i].find("et") != callingPoints[i].end() && 
+            // Add time in brackets if ETD display is enabled
+            if (showCallingPointETD) {
+                // Check if 'et' exists and is not empty
+                if (callingPoints[i].find("et") != callingPoints[i].end() && 
                     !callingPoints[i]["et"].get<std::string>().empty()) {
-                    ss << " (" << callingPoints[i]["et"].get<std::string>() << ")";
+                    
+                    // Get the estimated time
+                    std::string etValue = callingPoints[i]["et"].get<std::string>();
+                    
+                    if (etValue == "On time") {
+                        // If the train is on time, display the scheduled time instead
+                        if (callingPoints[i].find("st") != callingPoints[i].end() && 
+                            !callingPoints[i]["st"].get<std::string>().empty()) {
+                            ss << " (" << callingPoints[i]["st"].get<std::string>() << ")";
+                        }
+                    } else {
+                        // For any other value (delayed, etc.), display the estimated time
+                        ss << " (" << etValue << ")";
+                    }
                 }
             }
-            return ss.str();
-        } catch (const json::exception& e) {
-            throw std::runtime_error("Error creating location name list: " + std::string(e.what()));
         }
+        return ss.str();
+    } catch (const json::exception& e) {
+        throw std::runtime_error("Error creating location name list: " + std::string(e.what()));
+    }
     }
 
     // Added method to get delay reason
@@ -239,6 +268,36 @@ public:
             return ""; // No delay or no reason provided
         } catch (const json::exception& e) {
             return ""; // Return empty string in case of error
+        }
+    }
+
+    std::string getNrccMessages() {
+        std::lock_guard<std::mutex> lock(dataMutex);
+        try {
+            if (data.find("nrccMessages") != data.end() && 
+                data["nrccMessages"].is_array() && 
+                !data["nrccMessages"].empty()) {
+                
+                std::stringstream ss;
+                ss << "MESSAGE: ";
+                
+                for (size_t i = 0; i < data["nrccMessages"].size(); ++i) {
+                    if (i > 0) ss << " | ";
+                    
+                    // Extract the value from the message
+                    std::string message = data["nrccMessages"][i]["value"].get<std::string>();
+                    
+                    // Process HTML tags
+                    message = processHtmlTags(message);
+                    
+                    ss << message;
+                }
+                return ss.str();
+            }
+            return "";
+        } catch (const json::exception& e) {
+            DEBUG_PRINT("Error getting NRCC messages: " << e.what());
+            return "";
         }
     }
 };
@@ -305,126 +364,210 @@ public:
         DEBUG_PRINT("Display initialized with font: " << config.get("fontPath"));
     }
 
-    void run() {
-        while (running) {
+void run() {
+    while (running) {
+        try {
+            json data;
+            size_t num_services = 0;
             try {
-                json data;
-                size_t num_services = 0;
-                try {
-                    std::string api_data = callAPI(config.get("from"), config.get("to"), 
-                                                 config.get("APIURL"));
-                    parser.updateData(api_data);
-                    num_services = parser.getNumberOfServices();
-                    DEBUG_PRINT("Number of services available: " << num_services);
-                } catch (const std::exception& e) {
-                    std::cerr << "API Error: " << e.what() << std::endl;
-                    std::this_thread::sleep_for(std::chrono::seconds(30));
-                    continue;
-                }
-
-                if (num_services == 0) {
-                    DEBUG_PRINT("No services available");
-                    std::this_thread::sleep_for(std::chrono::seconds(30));
-                    continue;
-                }
-
-                // Get all the text content
-                std::string top_line = parser.getScheduledDepartureTime(0) + " " + 
-                                     parser.getDestinationLocation(0) + " " + 
-                                     parser.getEstimatedDepartureTime(0);
-                
-                std::string calling_points = parser.getLocationNameList(0);
-
-                // Get delay reason if the first train is delayed
-                std::string delay_reason = parser.getDelayReason(0);
-                if (!delay_reason.empty()) {
-                    calling_points += " - DELAY REASON: " + delay_reason;
-                }
-
-                std::string second_line = num_services > 1 ? 
-                    "2nd " + parser.getScheduledDepartureTime(1) + " " + 
-                    parser.getDestinationLocation(1) + " " + 
-                    parser.getEstimatedDepartureTime(1) : "No more services";
-                
-                std::string third_line = num_services > 2 ? 
-                    "3rd " + parser.getScheduledDepartureTime(2) + " " + 
-                    parser.getDestinationLocation(2) + " " + 
-                    parser.getEstimatedDepartureTime(2) : "No more services";
-
-                // Get vertical positions from config
-                int first_line_y = config.getInt("first_line_y");
-                int second_line_y = config.getInt("second_line_y");
-                int third_line_y = config.getInt("third_line_y");
-
-                // Animation loop
-                int matrix_width = matrix->width();
-                int calling_points_width = 0;
-                for (const char& c : calling_points) {
-                    calling_points_width += font.CharacterWidth(c);
-                }
-                
-                int scroll_x = matrix_width;
-                bool show_second = true;
-                auto last_toggle = std::chrono::steady_clock::now();
-                auto last_refresh = std::chrono::steady_clock::now();
-
-                while (running) {
-                    canvas->Clear();
-
-                    // Draw static top line
-                    rgb_matrix::DrawText(canvas, font, 0, first_line_y, white, top_line.c_str());
-
-                    // Draw scrolling calling points with wrap-around
-                    rgb_matrix::DrawText(canvas, font, scroll_x, second_line_y, white, calling_points.c_str());
-                    if (scroll_x < 0) {
-                        rgb_matrix::DrawText(canvas, font, scroll_x + matrix_width + calling_points_width, 
-                                           second_line_y, white, calling_points.c_str());
-                    }
-
-                    // Handle third line alternating text
-                    auto now = std::chrono::steady_clock::now();
-                    if (now - last_toggle >= std::chrono::seconds(
-                        config.getInt("third_line_refresh_seconds"))) {
-                        show_second = !show_second;
-                        last_toggle = now;
-                    }
-
-                    // Draw current third line text
-                    rgb_matrix::DrawText(canvas, font, 0, third_line_y, white,
-                                       (show_second ? second_line : third_line).c_str());
-
-                    // Update display
-                    canvas = matrix->SwapOnVSync(canvas);
-                    
-                    // Update scroll position with wrap-around
-                    scroll_x--;
-                    if (scroll_x < -calling_points_width) {
-                        scroll_x = matrix_width;
-                    }
-                    
-                    std::this_thread::sleep_for(std::chrono::milliseconds(
-                        config.getInt("scroll_slowdown_sleep_ms")));
-
-                    // Check if it's time to refresh the data
-                    if (now - last_refresh >= std::chrono::seconds(
-                        config.getInt("refresh_interval_seconds"))) {
-                        break;
-                    }
-                }
-
-                // Refresh data
                 std::string api_data = callAPI(config.get("from"), config.get("to"), 
                                              config.get("APIURL"));
                 parser.updateData(api_data);
-                last_refresh = std::chrono::steady_clock::now();
-
+                num_services = parser.getNumberOfServices();
+                DEBUG_PRINT("Number of services available: " << num_services);
             } catch (const std::exception& e) {
-                std::cerr << "Display error: " << e.what() << std::endl;
-                std::this_thread::sleep_for(std::chrono::seconds(
-                    config.getInt("refresh_interval_seconds")));
+                std::cerr << "API Error: " << e.what() << std::endl;
+                std::this_thread::sleep_for(std::chrono::seconds(30));
+                continue;
             }
+
+            if (num_services == 0) {
+                DEBUG_PRINT("No services available");
+                std::this_thread::sleep_for(std::chrono::seconds(30));
+                continue;
+            }
+
+            // Get all the text content
+            std::string top_line = parser.getScheduledDepartureTime(0) + " " + 
+                                 parser.getDestinationLocation(0) + " " + 
+                                 parser.getEstimatedDepartureTime(0);
+            
+            std::string calling_points = parser.getLocationNameList(0);
+
+            // Get delay reason if the first train is delayed
+            std::string delay_reason = parser.getDelayReason(0);
+            if (!delay_reason.empty()) {
+                calling_points += " - DELAY REASON: " + delay_reason;
+            }
+
+            std::string second_line = num_services > 1 ? 
+                "2nd " + parser.getScheduledDepartureTime(1) + " " + 
+                parser.getDestinationLocation(1) + " " + 
+                parser.getEstimatedDepartureTime(1) : "No more services";
+            
+            std::string third_line = num_services > 2 ? 
+                "3rd " + parser.getScheduledDepartureTime(2) + " " + 
+                parser.getDestinationLocation(2) + " " + 
+                parser.getEstimatedDepartureTime(2) : "No more services";
+
+            // Check if messages should be shown according to config
+            bool show_messages = (config.get("ShowMessages") == "Yes");
+            
+            // Get any NRCC messages
+            std::string nrcc_message = "";
+            bool has_message = false;
+            
+            if (show_messages) {
+                nrcc_message = parser.getNrccMessages();
+                has_message = !nrcc_message.empty();
+                DEBUG_PRINT("NRCC Message: " << (has_message ? nrcc_message : "None"));
+            }
+            
+            // Get vertical positions from config
+            int first_line_y = config.getInt("first_line_y");
+            int second_line_y = config.getInt("second_line_y");
+            int third_line_y = config.getInt("third_line_y");
+
+            // Animation loop
+            int matrix_width = matrix->width();
+            
+            // Set up scrolling for calling points
+            int calling_points_width = 0;
+            for (const char& c : calling_points) {
+                calling_points_width += font.CharacterWidth(c);
+            }
+            
+            // Set up scrolling for message if present
+            int message_width = 0;
+            if (has_message) {
+                for (const char& c : nrcc_message) {
+                    message_width += font.CharacterWidth(c);
+                }
+            }
+            
+            int scroll_x_calling_points = matrix_width;
+            int scroll_x_message = matrix_width;
+            
+            // For the third row, we now have 3 states if a message is present
+            enum ThirdRowState { SECOND_TRAIN, THIRD_TRAIN, MESSAGE };
+            ThirdRowState third_row_state = SECOND_TRAIN;
+            
+            // Flag to track if a message scroll cycle is complete
+            bool message_scroll_complete = false;
+            
+            auto last_toggle = std::chrono::steady_clock::now();
+            auto last_refresh = std::chrono::steady_clock::now();
+
+            while (running) {
+                canvas->Clear();
+
+                // Draw static top line
+                rgb_matrix::DrawText(canvas, font, 0, first_line_y, white, top_line.c_str());
+
+                // Draw scrolling calling points with wrap-around
+                rgb_matrix::DrawText(canvas, font, scroll_x_calling_points, second_line_y, white, calling_points.c_str());
+                if (scroll_x_calling_points < 0) {
+                    rgb_matrix::DrawText(canvas, font, scroll_x_calling_points + matrix_width + calling_points_width, 
+                                       second_line_y, white, calling_points.c_str());
+                }
+
+                // Handle third line alternating text with potential message
+                auto now = std::chrono::steady_clock::now();
+                
+                // Check for state toggle - with special handling for message scrolling
+                bool should_toggle = false;
+                
+                if (third_row_state == MESSAGE) {
+                    // If we're showing a message, only toggle when scrolling is complete
+                    if (message_scroll_complete && 
+                        now - last_toggle >= std::chrono::seconds(config.getInt("third_line_refresh_seconds"))) {
+                        should_toggle = true;
+                    }
+                } else {
+                    // For train information, toggle based on timer
+                    if (now - last_toggle >= std::chrono::seconds(config.getInt("third_line_refresh_seconds"))) {
+                        should_toggle = true;
+                    }
+                }
+                
+                if (should_toggle) {
+                    if (has_message) {
+                        // If message exists, cycle through 3 states
+                        if (third_row_state == SECOND_TRAIN) {
+                            third_row_state = THIRD_TRAIN;
+                        } else if (third_row_state == THIRD_TRAIN) {
+                            third_row_state = MESSAGE;
+                            // Reset message scroll position and completion flag
+                            scroll_x_message = matrix_width;
+                            message_scroll_complete = false;
+                        } else { // MESSAGE
+                            third_row_state = SECOND_TRAIN;
+                        }
+                    } else {
+                        // If no message, toggle between 2nd and 3rd train only
+                        third_row_state = (third_row_state == SECOND_TRAIN) ? THIRD_TRAIN : SECOND_TRAIN;
+                    }
+                    last_toggle = now;
+                }
+
+                // Draw current third line content based on state
+                if (third_row_state == MESSAGE && has_message) {
+                    // Draw scrolling message
+                    rgb_matrix::DrawText(canvas, font, scroll_x_message, third_line_y, white, nrcc_message.c_str());
+                    if (scroll_x_message < 0) {
+                        rgb_matrix::DrawText(canvas, font, scroll_x_message + matrix_width + message_width, 
+                                           third_line_y, white, nrcc_message.c_str());
+                    }
+                    
+                    // Update message scroll position
+                    scroll_x_message--;
+                    
+                    // Check if a complete message scroll cycle has occurred
+                    if (scroll_x_message <= -message_width) {
+                        // Reset scroll position for a smooth continuous scroll
+                        scroll_x_message = matrix_width;
+                        // Mark that we've completed at least one full scroll
+                        message_scroll_complete = true;
+                    }
+                } else {
+                    // Draw static train info (2nd or 3rd)
+                    std::string current_line = (third_row_state == SECOND_TRAIN) ? second_line : third_line;
+                    rgb_matrix::DrawText(canvas, font, 0, third_line_y, white, current_line.c_str());
+                }
+
+                // Update display
+                canvas = matrix->SwapOnVSync(canvas);
+                
+                // Update calling points scroll position with wrap-around
+                scroll_x_calling_points--;
+                if (scroll_x_calling_points < -calling_points_width) {
+                    scroll_x_calling_points = matrix_width;
+                }
+                
+                std::this_thread::sleep_for(std::chrono::milliseconds(
+                    config.getInt("scroll_slowdown_sleep_ms")));
+
+                // Check if it's time to refresh the data
+                if (now - last_refresh >= std::chrono::seconds(
+                    config.getInt("refresh_interval_seconds"))) {
+                    break;
+                }
+            }
+
+            // Refresh data
+            std::string api_data = callAPI(config.get("from"), config.get("to"), 
+                                         config.get("APIURL"));
+            parser.updateData(api_data);
+            last_refresh = std::chrono::steady_clock::now();
+
+        } catch (const std::exception& e) {
+            std::cerr << "Display error: " << e.what() << std::endl;
+            std::this_thread::sleep_for(std::chrono::seconds(
+                config.getInt("refresh_interval_seconds")));
         }
     }
+}
+
 
     void stop() {
         running = false;
@@ -645,3 +788,4 @@ try {
 
     return 0;
 }
+
