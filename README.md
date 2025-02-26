@@ -153,7 +153,7 @@ I've create a fork of Huxley2 with modifications for running locally on a raspbe
 
 However you can also install on Azure. The instructions for this are fabulous are are available [on this blog post](https://unop.uk/huxley-2-release).
 
-Either Azure or local is good.  At the time of writing the periodic local API query causes the display to flicker, however there are still performance tuning options to deal with this.
+Either Azure or local is good.  At the time of writing the periodic local API query can cause the dispay to flicker slightly.  A separate Pi-Zero would cure this.
 
 # The final Steps #
 
