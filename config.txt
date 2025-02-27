@@ -2,7 +2,7 @@
 # Lines starting with # are comments
 # Replace XXX with your configuration
 
-# Default Station codes
+# Station codes
 from=XXX
 to=XXX
 
@@ -10,7 +10,7 @@ to=XXX
 APIURL=https://XXX
 
 # Display font configuration
-fontPath=/home/XXX/fonts/9x18.bdf
+fontPath=/home/XXX/rpi-rgb-led-matrix/fonts/9x18.bdf
 
 # Timing parameters (in milliseconds/seconds)
 scroll_slowdown_sleep_ms=35
@@ -31,11 +31,12 @@ second_line_y=38
 third_line_y=58
 
 # Feature configuration
-ShowCallingPointETD=No
-ShowMessages=No
+ShowCallingPointETD=Yes
+ShowMessages=Yes
 
-# RGB Matrix Library Configuration Parameters - DO NOT modify parameter names
-# it's unlikely you'll need to modify these - see https://github.com/hzeller/rpi-rgb-led-matrix for details
+# RGB Matrix Library Configuration Parameters
+# Please do not put comments on the same line as values
+# See https://github.com/hzeller/rpi-rgb-led-matrix for details on parameters
 
 # Panel type settings
 led-multiplexing=0
