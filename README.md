@@ -160,41 +160,61 @@ Either Azure or local is good.  At the time of writing the periodic local API qu
 ## Installing the RGB Matrix Train Departure Board software ##
 From this repository - `git clone https://github.com/jonmorrissmith/RGB_Matrix_Train_Departure_Board`
 
-Edit the configuration class in to provide default settings:
-```// Configuration class
+Edit the configuration in config.h in to your default settings:
+```
 class Config {
 private:
     std::map<std::string, std::string> settings;
-
+    
     const std::map<std::string, std::string> defaults = {
-        {"from", "<your default departure - use the three letter station code>"},
-        {"to", "<your default destination point - use the three letter station code>"},
-        {"APIURL", "<URL for your train info API>"},
-        {"fontPath", "/home/<your path>/rpi-rgb-led-matrix/fonts/9x18.bdf"},
-        {"scroll_slowdown_sleep_ms", "50"},                //adjust the speed of the scroll
-        {"refresh_interval_seconds", "60"},                //how often the train data is refresehd
-        {"matrixcols", "128"},                             //number of LED columns in a matrix panel
-        {"matrixrows", "64"},                              //number of LED rows in a matrix panel
-        {"matrixchain_length", "3"},                       //how many panels you've got joined together horizontally
-        {"matrixparallel", "1"},                           //how many rows of panels you've got
-        {"matrixhardware_mapping", "adafruit-hat-pwm"},    //hardware mapping
-        {"gpio_slowdown", "4"},                            //performance tuning
-        {"first_line_y", "18"},                            //where the first line of text will appear
-        {"second_line_y", "38"},                           //where the second line of text will appear
-        {"third_line_y", "58"},                            //where the third line of text will appear
-        {"third_line_refresh_seconds", "10"}               //how often the third row will change
-        {"ShowCallingPointETD", "Yes"},                    //shows the estimated time of departure for each calling point.
-        {"ShowMessages", "Yes"}                            //show any messages on the third row in adddition to the 2nd and 3rd departures
+        {"from", "XXX"},                                               // Your default origin
+        {"to", "XXX"},                                                 // Your default destination
+        {"APIURL", "https://XXX"},                                     // URL for your train data
+        {"fontPath", "/home/XXX/rpi-rgb-led-matrix/fonts/9x18.bdf"},   // font directory
+        {"scroll_slowdown_sleep_ms", "50"},                            // Speed of scroll for calling points
+        {"refresh_interval_seconds", "60"},                            // How often the data refreshes
+        {"matrixcols", "128"},                                         // number of LED columns in a matrix panel
+        {"matrixrows", "64"},                                          // number of LED rows in a matrix panel
+        {"matrixchain_length", "3"},                                   // number of panels chained together
+        {"matrixparallel", "1"},                                       // number of rows of panels
+        {"matrixhardware_mapping", "adafruit-hat-pwm"},                // hardware configuration
+        {"gpio_slowdown", "4"},                                        // basic performance tuning
+        {"first_line_y", "18"},                                        // where the first line of text will appear
+        {"second_line_y", "38"},                                       // where the second line of text will appear
+        {"third_line_y", "58"},                                        // where the third line of text will appear
+        {"third_line_refresh_seconds", "10"},                          // How often the 3rd line refreshes
+        {"ShowCallingPointETD", "Yes"},                                // show the estimated time of departure for each calling point.
+        {"ShowMessages", "Yes"},                                       // show any messages on the third row in adddition to the 2nd and 3rd departures
+        
+        // RGB Matrix defaults - see https://github.com/hzeller/rpi-rgb-led-matrix for details
+        {"led-multiplexing", "0"},
+        {"led-pixel-mapper", ""},
+        {"led-pwm-bits", "11"},
+        {"led-brightness", "100"},
+        {"led-scan-mode", "0"},
+        {"led-row-addr-type", "0"},
+        {"led-show-refresh", "false"},
+        {"led-limit-refresh", "0"},
+        {"led-inverse", "false"},
+        {"led-rgb-sequence", "RGB"},
+        {"led-pwm-lsb-nanoseconds", "130"},
+        {"led-pwm-dither-bits", "0"},
+        {"led-no-hardware-pulse", "false"},
+        {"led-panel-type", ""},
+        {"led-daemon", "false"},
+        {"led-no-drop-privs", "false"},
+        {"led-drop-priv-user", "daemon"},
+        {"led-drop-priv-group", "daemon"}
     };
 ```
 
 And compile (may take a while)!
 
-`g++ -O3 -std=c++11 train_service_display.cpp -o train_service_display -lrgbmatrix -lcurl -lpthread -I/home/<your path>/rpi-rgb-led-matrix/include -L/home/<your path>/rpi-rgb-led-matrix/lib`
+`g++ -O3 -std=c++11 traindisplay.cpp -o traindisplay -lrgbmatrix -lcurl -lpthread -I/home/<your path>/rpi-rgb-led-matrix/include -L/home/<your path>/rpi-rgb-led-matrix/lib`
 
 # And finally Cyril... and finally Esther #
 ## Permissions for your home directory ##
-You need to make your home directory world readable.
+You need to make your home directory world readable - you need to run the executable as root, and root needs permissions.
 ```
 cd
 cd ..
@@ -208,18 +228,19 @@ This can be used to over-ride settings in the configuration class and other cust
 
 Detail of the RGB Matrix library parameters is available [here in the RGB Matrix documentation](https://github.com/hzeller/rpi-rgb-led-matrix/blob/master/README.md#changing-parameters-via-command-line-flags)
 
-```# Train Display Configuration File
+```
+# Train Display Configuration File
 # Lines starting with # are comments
 
 # Station codes
-from=<your default departure - use the three letter station code>
-to=<your default destination - use the three letter station code>
+from=XXX
+to=XXX
 
 # API Configuration
-APIURL=<Your API URL>
+APIURL=https://XXX
 
 # Display font configuration
-fontPath=/home/<yourpath>/rpi-rgb-led-matrix/fonts/9x18.bdf
+fontPath=/home/XXX/rpi-rgb-led-matrix/fonts/9x18.bdf
 
 # Timing parameters (in milliseconds/seconds)
 scroll_slowdown_sleep_ms=35
@@ -240,10 +261,11 @@ second_line_y=38
 third_line_y=58
 
 # Feature configuration
-ShowCallingPointETD=No
-ShowMessages=No
+ShowCallingPointETD=Yes
+ShowMessages=Yes
 
-# RGB Matrix Library Configuration Parameters - DO NOT modify parameter names
+# RGB Matrix Library Configuration Parameters
+# Please do not put comments on the same line as values
 
 # Panel type settings
 led-multiplexing=0
@@ -281,19 +303,19 @@ You've got four options all of which also support a '-d' option for debugging in
 
 Use the default configuration in the executable
 
-`sudo ./train_service_display`
+`sudo ./traindisplay`
 
 Use the default configuration in the executable and specify origin and destination
 
-`sudo ./train_service_display SAC STP`
+`sudo ./traindisplay SAC STP`
 
 Use your configuration file
 
-`sudo ./train_service_display -f <config file>`
+`sudo ./traindisplay -f <config file>`
 
 Combination of the above
 
-`sudo ./train_service_display SAC STP -f <config file>`
+`sudo ./traindisplay SAC STP -f <config file>`
 
 Enjoy!
 
