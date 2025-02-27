@@ -297,9 +297,13 @@ led-no-drop-privs=false
 led-drop-priv-user=daemon
 led-drop-priv-group=daemon
 ```
-### Run the executable ###
+# Enjoy Your Departure Board #
 
-You've got four options all of which also support a '-d' option for debugging information
+Two options available
+
+## Command Line Operation ##
+
+Four options all of which also support a '-d' option for debugging information
 
 Use the default configuration in the executable
 
@@ -316,6 +320,28 @@ Use your configuration file
 Combination of the above
 
 `sudo ./traindisplay SAC STP -f <config file>`
+
+## Lightweight User Interface ##
+
+Good for parameter tweaking and easy operation
+
+### Set up the User Interface ###
+
+Edit the `ui-config.txt` file to reflect your installation (probably just need to replace XXX with your home directory)
+```
+Executable_directory - /home/XXX/RGB_Matrix_Train_Departure_Board
+Executable_command_line - sudo /home/XXX/RGB_Matrix_Train_Departure_Board/traindisplay -f /home/XXX/RGB_Matrix_Train_Departure_Board/config.txt
+Port - 8080
+Defaults_Config_file - /home/XXX/RGB_Matrix_Train_Departure_Board/default-config.txt
+```
+The `default-config.txt` file gives you something to revert to if your tweaking goes astray!
+
+Just copy your existing configuration file.
+```
+cp config.txt default-config.txt
+```
+### Connect to the User Interface ###
+With the above configuration you can tweak away to your hearts content at `http://<IP address of your Raspberry Pi>:8080`
 
 Enjoy!
 

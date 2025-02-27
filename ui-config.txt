@@ -1,0 +1,4 @@
+Executable_directory - /home/XXX/RGB_Matrix_Train_Departure_Board
+Executable_command_line - sudo /home/XXX/RGB_Matrix_Train_Departure_Board/traindisplay -f /home/XXX/RGB_Matrix_Train_Departure_Board/config.txt
+Port - 8080
+Defaults_Config_file - /home/XXX/RGB_Matrix_Train_Departure_Board/default-config.txt
