@@ -340,6 +340,21 @@ Just copy your existing configuration file.
 ```
 cp config.txt default-config.txt
 ```
+
+Finally make sure the `config_server.py` script is executable
+```
+chmod 755 config_server.py
+```
+and then start the configuration server
+```
+./config_server.py
+```
+You should see something like:
+```
+Starting server on port 8080...
+```
+which indicates you can do away with manual configuration editing and enjoy the minimal UI experience!
+
 ### Connect to the User Interface ###
 With the above configuration you can tweak away to your hearts content at `http://<IP address of your Raspberry Pi>:8080`
 
@@ -349,6 +364,7 @@ Enjoy!
 I suspect that most of this will centre around the RGB display library:
 * [Changing parameters](https://github.com/hzeller/rpi-rgb-led-matrix/blob/master/README.md#changing-parameters-via-command-line-flags)
 * [Troubleshooting](https://github.com/hzeller/rpi-rgb-led-matrix/blob/master/README.md#troubleshooting)
+Otherwise feel free to raise an Issue here on github.
 
 # Huge thanks to... #
 
