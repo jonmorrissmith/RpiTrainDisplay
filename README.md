@@ -160,7 +160,9 @@ Either Azure or local is good.  At the time of writing the periodic local API qu
 ## Installing the RGB Matrix Train Departure Board software ##
 From this repository - `git clone https://github.com/jonmorrissmith/RGB_Matrix_Train_Departure_Board`
 
-Edit the configuration in config.h in to your default settings:
+Edit the configuration in config.h in to your default settings
+
+_Note_ - these have been optimised for black and white and speed:
 ```
 class Config {
 private:
@@ -171,7 +173,7 @@ private:
         {"to", "XXX"},                                                 // Your default destination
         {"APIURL", "https://XXX"},                                     // URL for your train data
         {"fontPath", "/home/XXX/rpi-rgb-led-matrix/fonts/9x18.bdf"},   // font directory
-        {"scroll_slowdown_sleep_ms", "50"},                            // Speed of scroll for calling points
+        {"scroll_slowdown_sleep_ms", "15"},                            // Speed of scroll for calling points
         {"refresh_interval_seconds", "60"},                            // How often the data refreshes
         {"matrixcols", "128"},                                         // number of LED columns in a matrix panel
         {"matrixrows", "64"},                                          // number of LED rows in a matrix panel
@@ -189,7 +191,7 @@ private:
         // RGB Matrix defaults - see https://github.com/hzeller/rpi-rgb-led-matrix for details
         {"led-multiplexing", "0"},
         {"led-pixel-mapper", ""},
-        {"led-pwm-bits", "11"},
+        {"led-pwm-bits", "1"},
         {"led-brightness", "100"},
         {"led-scan-mode", "0"},
         {"led-row-addr-type", "0"},
@@ -243,7 +245,7 @@ APIURL=https://XXX
 fontPath=/home/XXX/rpi-rgb-led-matrix/fonts/9x18.bdf
 
 # Timing parameters (in milliseconds/seconds)
-scroll_slowdown_sleep_ms=35
+scroll_slowdown_sleep_ms=15
 refresh_interval_seconds=60
 third_line_refresh_seconds=10
 
@@ -273,7 +275,7 @@ led-pixel-mapper=
 led-panel-type=
 
 # Display quality settings
-led-pwm-bits=11
+led-pwm-bits=1
 led-brightness=100
 led-scan-mode=0
 led-row-addr-type=0
