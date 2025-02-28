@@ -35,7 +35,7 @@ private:
         {"to", "XXX"},
         {"APIURL", "https://XXX"},
         {"fontPath", "/home/XXX/rpi-rgb-led-matrix/fonts/9x18.bdf"},
-        {"scroll_slowdown_sleep_ms", "50"},
+        {"scroll_slowdown_sleep_ms", "15"},
         {"refresh_interval_seconds", "60"},
         {"matrixcols", "128"},
         {"matrixrows", "64"},
@@ -53,7 +53,7 @@ private:
         // RGB Matrix defaults
         {"led-multiplexing", "0"},
         {"led-pixel-mapper", ""},
-        {"led-pwm-bits", "11"},
+        {"led-pwm-bits", "1"},
         {"led-brightness", "100"},
         {"led-scan-mode", "0"},
         {"led-row-addr-type", "0"},
