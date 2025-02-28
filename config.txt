@@ -13,7 +13,7 @@ APIURL=https://XXX
 fontPath=/home/XXX/rpi-rgb-led-matrix/fonts/9x18.bdf
 
 # Timing parameters (in milliseconds/seconds)
-scroll_slowdown_sleep_ms=35
+scroll_slowdown_sleep_ms=15
 refresh_interval_seconds=60
 third_line_refresh_seconds=10
 
@@ -44,7 +44,7 @@ led-pixel-mapper=
 led-panel-type=
 
 # Display quality settings
-led-pwm-bits=11
+led-pwm-bits=1
 led-brightness=100
 led-scan-mode=0
 led-row-addr-type=0
