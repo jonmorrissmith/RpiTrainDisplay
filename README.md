@@ -1,21 +1,29 @@
 # RGB Matrix Train Departure Board
-You can build you're own train departure board showing the next train from your favourite station to your favourite destination, where it's calling, and the following two departures.
+Rather than paying rather a lot of money, you can build you're own RGB matrix train departure board
 
-The project uses a Raspberry Pi with RGB LED matrices and has a range of configuration options.
+Currently configured to showing:
+* The next train from your favourite station to your favourite destination
+* Calling points (with optional estimated time of departure)
+* The following two departures
+* Optional display of delay reasons and other messages
+
+All configured using a light-weight web-page you can access on any device.
+
+Components are a Raspberry Pi, an interface (Adafruit bonnet), some RGB matrices and a power-supply.
 
 # Motivation
-Being a life-long train fan I've always wanted my own departure board... and as a regular commuter I wanted one which shows my usual route.
+Being a life-long train fan I've always wanted my own departure board, and as a regular commuter one which shows my usual route.
 
 Over the years I've looked at flip-dot displays and various other mechanisms and then saw LED dot-matrix displays become available for purchase.
 
-These look amazing... however the price and monthly-subscription was offputting.
+These look amazing... however the price is staggering, as is the monthly-subscription some require for what is freely available data.
 
-My thought -  _"I wonder if I could build one for less"_.
+My thought -  _"How hard can it be"_.
 
-And here we are.
+And here we are - the Raspberry Pi RGB matrix departure board and companion [Raspberry Pi fork of Huxley2](https://github.com/jonmorrissmith/jonms-Huxley2).
 
 # This documentation is evolving
-In this second version (26th Feb 2025) there's still gaps, however it's a lot more complete than it was.
+In this second version (1st March) there's still gaps, however it's a lot more complete than it was.
 
 Happy to help with any questions - best to do that via github so others can share the wisdom.
 
