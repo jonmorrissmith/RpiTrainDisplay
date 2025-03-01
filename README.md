@@ -1,7 +1,7 @@
 # RGB Matrix Train Departure Board
-Rather than paying rather a lot of money, you can build you're own RGB matrix train departure board
+Rather than paying rather a lot of money, you can build you're own RGB matrix train departure board.
 
-Currently configured to showing:
+Currently configured to show:
 * The next train from your favourite station to your favourite destination
 * Calling points (with optional estimated time of departure)
 * The following two departures
