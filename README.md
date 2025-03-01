@@ -92,9 +92,7 @@ As a side note, I had to chop some pins off a connector on the Pi as they hit th
 
 ### Connecting to the panels ###
 
-This shoudl be self-explanatory.  
-
-Make sure that your ribbon cables are short and connect from 'Outputs' to 'Inputs' (should be labelled or have an arrow)
+Only thing to watch for is to make sure that your ribbon cables are short and connect from 'Outputs' to 'Inputs' (should be labelled or have an arrow on the matrix boards
 
 ### Connecting the power ###
 
