@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-A lightweight web server for to modify/reset Traindisplay config files and (re)start the process.
+Lightweight web server to modify configuration files and restart the display process.
 """
 import os
 import sys
@@ -74,8 +74,8 @@ def restart_process(ui_config):
         exec_dir = ui_config.get("Executable_directory")
         cmd_line = ui_config.get("Executable_command_line")
         
-        # Replace placeholders in the command line
-        cmd_line = cmd_line.replace("<executable directory>", exec_dir)
+        # We no longer need to replace placeholders since the command line is explicit
+        # Just execute the command directly
         
         # Kill existing process if it's running
         subprocess.run(["pkill", "-f", "traindisplay"], stderr=subprocess.PIPE)
@@ -152,6 +152,7 @@ class ConfigHandler(BaseHTTPRequestHandler):
                 <h1>Train Display Configuration</h1>
                 <div class="button-group" style="margin-bottom: 20px;">
                     <button type="button" id="resetButton" style="background-color: #f44336; margin-right: 10px;">Reset to Defaults</button>
+                    <button type="button" id="saveDefaultButton" style="background-color: #2196F3;">Save as Default</button>
                 </div>
                 <form id="configForm">
             '''
@@ -203,6 +204,41 @@ class ConfigHandler(BaseHTTPRequestHandler):
                                 messageDiv.className = 'error';
                                 messageDiv.textContent = 'Error: ' + error;
                             });
+                    });
+                    
+                    // Save as Default button click handler
+                    document.getElementById('saveDefaultButton').addEventListener('click', function() {
+                        // Collect current form values
+                        const formData = new FormData(document.getElementById('configForm'));
+                        const data = {};
+                        for (const [key, value] of formData.entries()) {
+                            data[key] = value;
+                        }
+                        
+                        // Send to server to save as default
+                        fetch('/savedefault', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(data)
+                        })
+                        .then(response => response.json())
+                        .then(result => {
+                            const messageDiv = document.getElementById('message');
+                            if (result.success) {
+                                messageDiv.className = 'success';
+                                messageDiv.textContent = 'Current settings saved as default configuration.';
+                            } else {
+                                messageDiv.className = 'error';
+                                messageDiv.textContent = 'Error: ' + result.error;
+                            }
+                        })
+                        .catch(error => {
+                            const messageDiv = document.getElementById('message');
+                            messageDiv.className = 'error';
+                            messageDiv.textContent = 'Error: ' + error;
+                        });
                     });
                     
                     // Form submission handler
@@ -290,6 +326,29 @@ class ConfigHandler(BaseHTTPRequestHandler):
                 response['error'] = error
                 
             self.wfile.write(json.dumps(response).encode())
+        elif self.path == '/savedefault':
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length).decode('utf-8')
+            data = json.loads(post_data)
+            
+            # Get the path to the default config file
+            default_config_path = self.ui_config.get("Defaults_Config_file")
+            
+            # Save the current settings as default
+            success = save_config(default_config_path, data)
+            
+            # Send response
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            
+            response = {
+                'success': success
+            }
+            if not success:
+                response['error'] = "Failed to save default configuration"
+                
+            self.wfile.write(json.dumps(response).encode())
         else:
             self.send_response(404)
             self.end_headers()
@@ -321,4 +380,3 @@ if __name__ == "__main__":
     
     ui_config = load_ui_config(ui_config_path)
     run(ui_config=ui_config)
-
