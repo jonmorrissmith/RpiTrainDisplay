@@ -37,15 +37,17 @@ private:
         {"fontPath", "/home/XXX/rpi-rgb-led-matrix/fonts/9x18.bdf"},
         {"scroll_slowdown_sleep_ms", "15"},
         {"refresh_interval_seconds", "60"},
+        {"Message_Refresh_interval", "20"},
         {"matrixcols", "128"},
         {"matrixrows", "64"},
         {"matrixchain_length", "3"},
         {"matrixparallel", "1"},
         {"matrixhardware_mapping", "adafruit-hat-pwm"},
-        {"gpio_slowdown", "4"},
-        {"first_line_y", "18"},
-        {"second_line_y", "38"},
-        {"third_line_y", "58"},
+        {"gpio_slowdown", "2"},
+        {"first_line_y", "12"},
+        {"second_line_y", "29"},
+        {"third_line_y", "46"},
+        {"fourth_line_y", "62"},
         {"third_line_refresh_seconds", "10"},
         {"ShowCallingPointETD", "Yes"},
         {"ShowMessages", "Yes"},
@@ -243,4 +245,3 @@ private:
 };
 
 #endif // CONFIG_H
-

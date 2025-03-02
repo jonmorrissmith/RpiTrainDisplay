@@ -1,6 +1,6 @@
-# Train Display Configuration File
+## Train Display Configuration File
 # Lines starting with # are comments
-# Replace XXX with your configuration
+# Replace XXX with your settings (or just copy config.txt)
 
 # Station codes
 from=XXX

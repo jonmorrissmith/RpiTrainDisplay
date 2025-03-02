@@ -18,6 +18,8 @@
 #include <string>
 #include <atomic>
 #include <iostream>
+#include <ctime>
+#include <iomanip>
 #include "config.h"
 #include "api_client.h"
 #include "train_service_parser.h"
@@ -46,13 +48,15 @@ private:
     const Config& config;
     
     // Display state
-    enum ThirdRowState { SECOND_TRAIN, THIRD_TRAIN, MESSAGE };
+    enum ThirdRowState { SECOND_TRAIN, THIRD_TRAIN };
+    enum FourthRowState { CLOCK, MESSAGE };
     
     // Display content
     std::string top_line;
     std::string calling_points;
     std::string second_line;
     std::string third_line;
+    std::string clock_display;
     std::string nrcc_message;
     bool has_message;
     bool show_messages;
@@ -63,6 +67,7 @@ private:
     int first_line_y;
     int second_line_y;
     int third_line_y;
+    int fourth_line_y;
     int matrix_width;
     int calling_points_width;
     int message_width;
@@ -73,7 +78,9 @@ private:
     
     // State
     ThirdRowState third_row_state;
-    std::chrono::steady_clock::time_point last_toggle;
+    FourthRowState fourth_row_state;
+    std::chrono::steady_clock::time_point last_third_row_toggle;
+    std::chrono::steady_clock::time_point last_fourth_row_toggle;
     std::chrono::steady_clock::time_point last_refresh;
 
     // Helper methods
@@ -101,7 +108,7 @@ private:
             // Get delay reason if the first train is delayed
             std::string delay_reason = parser.getDelayReason(0);
             if (!delay_reason.empty()) {
-                calling_points += " - DELAY REASON: " + delay_reason;
+                calling_points += " - " + delay_reason;
             }
 
             second_line = num_services > 1 ? 
@@ -139,6 +146,20 @@ private:
         }
     }
 
+    void updateClockDisplay() {
+        // Get current time
+        auto now = std::time(nullptr);
+        auto tm = std::localtime(&now);
+        
+        // Format time as HH:MM:SS in 24-hour format
+        std::ostringstream timeStream;
+        timeStream << std::setfill('0') << std::setw(2) << tm->tm_hour << ":"
+                   << std::setfill('0') << std::setw(2) << tm->tm_min << ":"
+                   << std::setfill('0') << std::setw(2) << tm->tm_sec;
+        
+        clock_display = timeStream.str();
+    }
+
     void calculateTextWidths() {
         calling_points_width = 0;
         for (const char& c : calling_points) {
@@ -153,6 +174,14 @@ private:
         }
     }
     
+    int calculateTextWidth(const std::string& text) {
+        int width = 0;
+        for (const char& c : text) {
+            width += font.CharacterWidth(c);
+        }
+        return width;
+    }
+    
     void renderFrame() {
         canvas->Clear();
 
@@ -163,13 +192,24 @@ private:
         renderScrollingText(calling_points, scroll_x_calling_points, calling_points_width, second_line_y);
 
         // Draw current third line content based on state
-        if (third_row_state == MESSAGE && has_message) {
-            renderScrollingText(nrcc_message, scroll_x_message, message_width, third_line_y);
+        std::string current_third_line = (third_row_state == SECOND_TRAIN) ? second_line : third_line;
+        rgb_matrix::DrawText(canvas, font, 0, third_line_y, white, current_third_line.c_str());
+
+        // Draw fourth row content (either clock or message)
+        if (fourth_row_state == CLOCK || !has_message) {
+            // Update clock display
+            updateClockDisplay();
+            
+            // Center the clock text
+            int clock_width = calculateTextWidth(clock_display);
+            int x_position = (matrix_width - clock_width) / 2;
+            
+            // Draw the centered clock
+            rgb_matrix::DrawText(canvas, font, x_position, fourth_line_y, white, clock_display.c_str());
+        } else if (fourth_row_state == MESSAGE && has_message) {
+            // Draw scrolling message
+            renderScrollingText(nrcc_message, scroll_x_message, message_width, fourth_line_y);
             updateMessageScroll();
-        } else {
-            // Draw static train info (2nd or 3rd)
-            std::string current_line = (third_row_state == SECOND_TRAIN) ? second_line : third_line;
-            rgb_matrix::DrawText(canvas, font, 0, third_line_y, white, current_line.c_str());
         }
 
         // Update display
@@ -207,43 +247,62 @@ private:
 
     void checkThirdRowStateTransition() {
         auto now = std::chrono::steady_clock::now();
+        
+        // For train information, toggle based on timer
+        if (now - last_third_row_toggle >= std::chrono::seconds(config.getInt("third_line_refresh_seconds"))) {
+            transitionThirdRowState();
+            last_third_row_toggle = now;
+        }
+    }
+
+    void checkFourthRowStateTransition() {
+        auto now = std::chrono::steady_clock::now();
         bool should_toggle = false;
         
-        if (third_row_state == MESSAGE) {
+        if (!show_messages || !has_message) {
+            // If messages are disabled or there aren't any, always show the clock
+            fourth_row_state = CLOCK;
+            return;
+        }
+        
+        if (fourth_row_state == MESSAGE) {
             // If we're showing a message, only toggle when scrolling is complete
             if (message_scroll_complete && 
-                now - last_toggle >= std::chrono::seconds(config.getInt("third_line_refresh_seconds"))) {
+                now - last_fourth_row_toggle >= std::chrono::seconds(config.getInt("Message_Refresh_interval"))) {
                 should_toggle = true;
             }
         } else {
-            // For train information, toggle based on timer
-            if (now - last_toggle >= std::chrono::seconds(config.getInt("third_line_refresh_seconds"))) {
+            // For clock, toggle based on timer
+            if (now - last_fourth_row_toggle >= std::chrono::seconds(config.getInt("Message_Refresh_interval"))) {
                 should_toggle = true;
             }
         }
         
         if (should_toggle) {
-            transitionThirdRowState();
-            last_toggle = now;
+            transitionFourthRowState();
+            last_fourth_row_toggle = now;
         }
     }
 
     void transitionThirdRowState() {
+        // Simply toggle between 2nd and 3rd train only
+        third_row_state = (third_row_state == SECOND_TRAIN) ? THIRD_TRAIN : SECOND_TRAIN;
+    }
+    
+    void transitionFourthRowState() {
         if (has_message) {
-            // If message exists, cycle through 3 states
-            if (third_row_state == SECOND_TRAIN) {
-                third_row_state = THIRD_TRAIN;
-            } else if (third_row_state == THIRD_TRAIN) {
-                third_row_state = MESSAGE;
+            // Toggle between clock and message
+            if (fourth_row_state == CLOCK) {
+                fourth_row_state = MESSAGE;
                 // Reset message scroll position and completion flag
                 scroll_x_message = matrix_width;
                 message_scroll_complete = false;
             } else { // MESSAGE
-                third_row_state = SECOND_TRAIN;
+                fourth_row_state = CLOCK;
             }
         } else {
-            // If no message, toggle between 2nd and 3rd train only
-            third_row_state = (third_row_state == SECOND_TRAIN) ? THIRD_TRAIN : SECOND_TRAIN;
+            // If no message, always show clock
+            fourth_row_state = CLOCK;
         }
     }
     
@@ -266,17 +325,19 @@ public:
           first_line_y(cfg.getInt("first_line_y")),
           second_line_y(cfg.getInt("second_line_y")),
           third_line_y(cfg.getInt("third_line_y")),
+          fourth_line_y(cfg.getInt("fourth_line_y")),
           matrix_width(m->width()),
           calling_points_width(0), message_width(0),
           scroll_x_calling_points(matrix_width), scroll_x_message(matrix_width),
-          third_row_state(SECOND_TRAIN), message_scroll_complete(false) {
+          third_row_state(SECOND_TRAIN), fourth_row_state(CLOCK), message_scroll_complete(false) {
     
         if (!font.LoadFont(config.get("fontPath").c_str())) {
             throw std::runtime_error("Font loading failed for: " + config.get("fontPath"));
         }
         
         // Initialize timestamps
-        last_toggle = std::chrono::steady_clock::now();
+        last_third_row_toggle = std::chrono::steady_clock::now();
+        last_fourth_row_toggle = std::chrono::steady_clock::now();
         last_refresh = std::chrono::steady_clock::now();
         
         DEBUG_PRINT("Display initialized with font: " << config.get("fontPath"));
@@ -286,6 +347,9 @@ public:
         
         // Initial data load
         updateDisplayContent();
+        
+        // Initial clock value
+        updateClockDisplay();
     }
 
     void run() {
@@ -301,6 +365,7 @@ public:
                 
                 // Check for state transitions
                 checkThirdRowStateTransition();
+                checkFourthRowStateTransition();
                 
                 // Render the current frame
                 renderFrame();
@@ -326,4 +391,3 @@ public:
 };
 
 #endif // TRAIN_SERVICE_DISPLAY_H
-
