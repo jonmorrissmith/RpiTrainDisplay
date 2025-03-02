@@ -10,12 +10,13 @@ to=XXX
 APIURL=https://XXX
 
 # Display font configuration
-fontPath=/home/XXX/rpi-rgb-led-matrix/fonts/9x18.bdf
+fontPath=/home/XXX/rpi-rgb-led-matrix/fonts/7x14.bdf
 
 # Timing parameters (in milliseconds/seconds)
 scroll_slowdown_sleep_ms=15
 refresh_interval_seconds=60
 third_line_refresh_seconds=10
+Message_Refresh_interval=20
 
 # Matrix hardware configuration
 matrixcols=128
@@ -26,17 +27,17 @@ matrixhardware_mapping=adafruit-hat-pwm
 gpio_slowdown=2
 
 # Display layout configuration (vertical positions)
-first_line_y=18
-second_line_y=38
-third_line_y=58
+first_line_y=12
+second_line_y=29
+third_line_y=46
+fourth_line_y=62
 
 # Feature configuration
-ShowCallingPointETD=Yes
+ShowCallingPointETD=No
 ShowMessages=Yes
 
 # RGB Matrix Library Configuration Parameters
 # Please do not put comments on the same line as values
-# See https://github.com/hzeller/rpi-rgb-led-matrix for details on parameters
 
 # Panel type settings
 led-multiplexing=0
