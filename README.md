@@ -1,5 +1,5 @@
 # RGB Matrix Train Departure Board
-Rather than paying rather a lot of money, you can build you're own RGB matrix train departure board.
+Rather than paying rather a lot of money, you can your own RGB matrix train departure board.
 
 Currently configured to show:
 * The next train from your favourite station to your favourite destination
@@ -9,14 +9,16 @@ Currently configured to show:
 
 All configured using a light-weight web-page you can access on any device.
 
-Components are a Raspberry Pi, an interface (Adafruit bonnet), some RGB matrices and a power-supply.
+Components are a Raspberry Pi, an adapter (Adafruit RGB matrix bonnet), some RGB matrices and a power-supply.
+
+There are some limitations with using this hardware which I suspect don't apply to commercially-available units.
 
 # Motivation
 Being a life-long train fan I've always wanted my own departure board, and as a regular commuter one which shows my usual route.
 
-Over the years I've looked at flip-dot displays and various other mechanisms and then saw LED dot-matrix displays become available for purchase.
+Over the years I've looked at flip-dot displays and various other types and saw LED dot-matrix displays become available for purchase.
 
-These look amazing... however the price is staggering, as is the monthly-subscription some require for what is freely available data.
+These look amazing... however the price is offputting, as is the monthly-subscription some require.
 
 My thought -  _"How hard can it be"_.
 
@@ -44,7 +46,7 @@ Three is a good size and three is limit for a chain of panels with the matrix li
 There are a myriad sellers on Ali Express and elsewhere. I suspect there's little to differentiate between offerings.
 
 ## A Raspberry Pi
-You could purchase [a 1GB Raspberry Pi 4 from Pimoroni](https://shop.pimoroni.com/products/raspberry-pi-4?variant=31856486416467) - I'm not plugging Pimoroni, it's just that they also stock the RGB Matrix Bonnet so you can save on postage.
+You could purchase [a 1GB Raspberry Pi 4 from Pimoroni](https://shop.pimoroni.com/products/raspberry-pi-4?variant=31856486416467) - I'm not plugging Pimoroni, it's just they also stock the Bonnet.
 
 I used a Raspberry Pi 4 which was unloved and needed a new purpose. 
 
@@ -193,54 +195,55 @@ If you go for colour (or increase `led-pwm-bits` from 1) then you may see ficker
 ## Installing the RGB Matrix Train Departure Board software ##
 From this repository - `git clone https://github.com/jonmorrissmith/RGB_Matrix_Train_Departure_Board`
 
-Edit the configuration in config.h in to your default settings
+### Configuration Options
 
-_Note_ - these have been optimised for black and white and speed:
+You can edit the configuration in config.h in to your default settings.
+
+These can be modified at any time in the `config.txt` file or via the user-interface.
+
+_Note_ - these have been optimised for black and white and speed
 ```
-class Config {
-private:
-    std::map<std::string, std::string> settings;
-    
-    const std::map<std::string, std::string> defaults = {
-        {"from", "XXX"},                                               // Your default origin
-        {"to", "XXX"},                                                 // Your default destination
-        {"APIURL", "https://XXX"},                                     // URL for your train data
-        {"fontPath", "/home/XXX/rpi-rgb-led-matrix/fonts/9x18.bdf"},   // font directory
-        {"scroll_slowdown_sleep_ms", "15"},                            // Speed of scroll for calling points
-        {"refresh_interval_seconds", "60"},                            // How often the data refreshes
-        {"matrixcols", "128"},                                         // number of LED columns in a matrix panel
-        {"matrixrows", "64"},                                          // number of LED rows in a matrix panel
-        {"matrixchain_length", "3"},                                   // number of panels chained together
-        {"matrixparallel", "1"},                                       // number of rows of panels
-        {"matrixhardware_mapping", "adafruit-hat-pwm"},                // hardware configuration
-        {"gpio_slowdown", "4"},                                        // basic performance tuning
-        {"first_line_y", "18"},                                        // where the first line of text will appear
-        {"second_line_y", "38"},                                       // where the second line of text will appear
-        {"third_line_y", "58"},                                        // where the third line of text will appear
-        {"third_line_refresh_seconds", "10"},                          // How often the 3rd line refreshes
-        {"ShowCallingPointETD", "Yes"},                                // show the estimated time of departure for each calling point.
-        {"ShowMessages", "Yes"},                                       // show any messages on the third row in adddition to the 2nd and 3rd departures
-        
-        // RGB Matrix defaults - see https://github.com/hzeller/rpi-rgb-led-matrix for details
-        {"led-multiplexing", "0"},
-        {"led-pixel-mapper", ""},
-        {"led-pwm-bits", "1"},
-        {"led-brightness", "100"},
-        {"led-scan-mode", "0"},
-        {"led-row-addr-type", "0"},
-        {"led-show-refresh", "false"},
-        {"led-limit-refresh", "0"},
-        {"led-inverse", "false"},
-        {"led-rgb-sequence", "RGB"},
-        {"led-pwm-lsb-nanoseconds", "130"},
-        {"led-pwm-dither-bits", "0"},
-        {"led-no-hardware-pulse", "false"},
-        {"led-panel-type", ""},
-        {"led-daemon", "false"},
-        {"led-no-drop-privs", "false"},
-        {"led-drop-priv-user", "daemon"},
-        {"led-drop-priv-group", "daemon"}
-    };
+"from"                       // Your default origin
+"to"                         // Your default destination
+"APIURL"                     // URL for your train data
+"fontPath"                   // Path to fonts 
+"scroll_slowdown_sleep_ms"   // Text scroll speed. Lower=faster
+"refresh_interval_seconds"   // How often train data refreshes
+"Message_Refresh_interval"   // How often the messages are shown
+"matrixcols"                 // Columns in RGB matrix
+"matrixrows"                 // Rows in RGB matrix
+"matrixchain_length"         // Number of panels in the chain
+"matrixparallel"             // Number of paralel chains
+"matrixhardware_mapping",    // RGB adapter hardware
+"gpio_slowdown"              // RGB Matrix tuning.
+"first_line_y"               // Position of the bottom of 1st line of text
+"second_line_y"              // Position of the bottom of 2nd line of text
+"third_line_y",              // Position of the bottom of 3rd line of text
+"fourth_line_y"              // Position of the bottom of 4th line of text
+"third_line_refresh_seconds" // How often 2nd/3rd trains toggle
+"ShowCallingPointETD"        // Calling point departure times
+"ShowMessages",              // Show Network Rail mesages
+```
+Detail of the RGB Matrix library parameters is available [in the RGB Matrix documentation](https://github.com/hzeller/rpi-rgb-led-matrix/blob/master/README.md#changing-parameters-via-command-line-flags)
+```
+"led-multiplexing"
+"led-pixel-mapper"
+"led-pwm-bits"
+"led-brightness"
+"led-scan-mode"
+"led-row-addr-type"
+"led-show-refresh"
+"led-limit-refresh"
+"led-inverse"
+"led-rgb-sequence"
+"led-pwm-lsb-nanoseconds"
+"led-pwm-dither-bits"
+"led-no-hardware-pulse"
+"led-panel-type"
+"led-daemon"
+"led-no-drop-privs"
+"led-drop-priv-user"
+"led-drop-priv-group"
 ```
 
 And compile (may take a while)!
@@ -261,77 +264,6 @@ Make this world-readable `chmod 755 <home directory name>`
 ## Tweak your configuration file ##
 This can be used to over-ride settings in the configuration class and other customisations.
 
-Detail of the RGB Matrix library parameters is available [here in the RGB Matrix documentation](https://github.com/hzeller/rpi-rgb-led-matrix/blob/master/README.md#changing-parameters-via-command-line-flags)
-
-```
-# Train Display Configuration File
-# Lines starting with # are comments
-
-# Station codes
-from=XXX
-to=XXX
-
-# API Configuration
-APIURL=https://XXX
-
-# Display font configuration
-fontPath=/home/XXX/rpi-rgb-led-matrix/fonts/9x18.bdf
-
-# Timing parameters (in milliseconds/seconds)
-scroll_slowdown_sleep_ms=15
-refresh_interval_seconds=60
-third_line_refresh_seconds=10
-
-# Matrix hardware configuration
-matrixcols=128
-matrixrows=64
-matrixchain_length=3
-matrixparallel=1
-matrixhardware_mapping=adafruit-hat-pwm
-gpio_slowdown=2
-
-# Display layout configuration (vertical positions)
-first_line_y=18
-second_line_y=38
-third_line_y=58
-
-# Feature configuration
-ShowCallingPointETD=Yes
-ShowMessages=Yes
-
-# RGB Matrix Library Configuration Parameters
-# Please do not put comments on the same line as values
-
-# Panel type settings
-led-multiplexing=0
-led-pixel-mapper=
-led-panel-type=
-
-# Display quality settings
-led-pwm-bits=1
-led-brightness=100
-led-scan-mode=0
-led-row-addr-type=0
-
-# Refresh rate settings
-led-show-refresh=false
-led-limit-refresh=0
-
-# Color settings
-led-inverse=false
-led-rgb-sequence=RGB
-
-# Advanced PWM settings
-led-pwm-lsb-nanoseconds=130
-led-pwm-dither-bits=0
-led-no-hardware-pulse=false
-
-# Privilege/daemon settings
-led-daemon=false
-led-no-drop-privs=false
-led-drop-priv-user=daemon
-led-drop-priv-group=daemon
-```
 # Enjoy Your Departure Board #
 
 Two options available
@@ -390,8 +322,18 @@ Starting server on port 8080...
 ```
 which indicates you can do away with manual configuration editing and enjoy the minimal UI experience!
 
+**Note** If you're running Huxley2 locally then that's on port 8081.
+
+**Note** You can run the config server as root if you want the UI to be on port 80.  
+
+If you do this then don't forget to remove the `sudo` from the `Executable_command_line` parameter.
+
+It's then as simple as starting the configuration server with `sudo ./config_server.py`.
+
 ### Connect to the User Interface ###
-With the above configuration you can tweak away to your hearts content at `http://<IP address of your Raspberry Pi>:8080`
+With the above configuration you can tweak away to your hearts content at `http://<IP address of your Raspberry Pi>:<port>`
+
+Or, if you're using the root option - `http://<IP address of your Raspberry Pi>`
 
 Enjoy!
 
