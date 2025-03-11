@@ -2,9 +2,9 @@
 # Lines starting with # are comments
 
 # Station codes
-from=CTK
+from=
 to=
-platform=1
+platform=
 
 # Feature Configuration
 ShowCallingPointETD=Yes
@@ -12,10 +12,10 @@ ShowMessages=Yes
 ShowPlatforms=Yes
 
 # API Configuration
-APIURL=https://api.anotherpartialsuccess.com
+APIURL=
 
 # Display font configuration
-fontPath=/home/display/rpi-rgb-led-matrix/fonts/7x14.bdf
+fontPath=
 
 # Timing parameters (in milliseconds/seconds)
 scroll_slowdown_sleep_ms=15
@@ -39,7 +39,6 @@ fourth_line_y=62
 
 
 # RGB Matrix Library Configuration Parameters
-# Please do not put comments on the same line as values
 
 # Panel type settings
 led-multiplexing=0
