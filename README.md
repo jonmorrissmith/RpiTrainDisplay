@@ -96,11 +96,11 @@ For other adapters see the [RGB Matrix - wiring](https://github.com/hzeller/rpi-
 As highlighted [here](https://github.com/hzeller/rpi-rgb-led-matrix?tab=readme-ov-file#improving-flicker) in the RGB documentation, an optional change to connect pins 4 and 18 on the hat/bonnet.
 
 I did this by soldering a row of pins to the bonnet and using a modified connector to make it easy to add/remove the modification.
-![Picture of pins and connector](https://github.com/jonmorrissmith/RGB_Matrix_Train_Departure_Board/blob/main/Bonnet_Jumpers.jpg)
+![Picture of pins and connector](https://github.com/jonmorrissmith/RGB_Matrix_Train_Departure_Board/blob/main/Images/Bonnet_Jumpers.jpg)
 
 ### Address E pad modification ###
 As highlighted [here](https://github.com/hzeller/rpi-rgb-led-matrix?tab=readme-ov-file#new-adafruit-rgb-matrix-hat-with-address-e-pads) in the RBG documentation, a change required for the size and type of panels I used.
-![Picture of soldere blob connecting the two pads](https://github.com/jonmorrissmith/RGB_Matrix_Train_Departure_Board/blob/main/Bonnet_Soldering.jpg)
+![Picture of soldere blob connecting the two pads](https://github.com/jonmorrissmith/RGB_Matrix_Train_Departure_Board/blob/main/Images/Bonnet_Soldering.jpg)
 
 As a side note, I had to chop some pins off a connector on the Pi as they hit the bonnet - I suspect I may regret that at some point when the Pi gets used for something else.
 
