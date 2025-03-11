@@ -1,17 +1,29 @@
 # RGB Matrix Train Departure Board
 Rather than paying rather a lot of money, you can your own RGB matrix train departure board.
 
-Currently configured to show:
-* The next train from your favourite station to your favourite destination
-* Calling points (with optional estimated time of departure)
-* The following two departures
-* Optional display of delay reasons and other messages
+Command line or via a light-weight web-page you can access on any device.
 
-All configured using a light-weight web-page you can access on any device.
+You can select:
+* All trains from a station
+* All trains from a station on a specified platform
+* All trains from a station to a specified destination
+* Or combinations of the above.
+  
+Default display:
+* The next train with calling points
+* The following two departures - destination and departure times
+* Any delay-related messages
+  
+Options to display
+* Departure platform
+* Estinated departure time for calling points
+* Any National Rail messages for the station
 
-Components are a Raspberry Pi, an adapter (Adafruit RGB matrix bonnet), some RGB matrices and a power-supply.
+Components are a Raspberry Pi, a matrix-adapter (Adafruit RGB matrix bonnet), some RGB matrices and a power-supply.
 
 There are some limitations with using this hardware which I suspect don't apply to commercially-available units.
+
+However for the cost it's a great result!
 
 # Motivation
 Being a life-long train fan I've always wanted my own departure board, and as a regular commuter one which shows my usual route.
@@ -110,13 +122,13 @@ As noted in the documentation, the Raspberry Pi doesn't have enough juice to pow
 
 There are more tutorials than you can shake a stick at on how to install an OS on a Raspberry Pi.
 
-I went for the 'OS Lite (64bit)' maximise CPU cycles the matrix driver can use by having a cut-down OS. Set up ssh and Wifi in the Raspberry Pi Imager tool.
+Use the 'OS Lite (64bit)' to maximise CPU cycles the matrix driver can use. Set up ssh and Wifi in the Raspberry Pi Imager tool.
 
 Once installed there was the usual upgrade/update and disable/uninstall anything unecessary.
 
 I would strongly recommend following [using a minimal raspbian distribution](https://github.com/hzeller/rpi-rgb-led-matrix?tab=readme-ov-file#use-minimal-raspbian-distribution) for more detail.
 
-What is described what I did in Feb 2025. Detail in the rpi-rgb-matrix repository will be the most recent recommendations.
+What is described what I did in March 2025. Detail in the rpi-rgb-matrix repository will be the most recent recommendations.
 
 * Set `dtparam=audio=off` in `/boot/firmware/config.txt`
 * Add `isolcpus=3` **to the end** of the parameters in `/boot/firmware/cmdline.txt` to isolate a CPU.
@@ -193,149 +205,146 @@ If you go for colour (or increase `led-pwm-bits` from 1) then you may see ficker
 # The final Steps #
 
 ## Installing the RGB Matrix Train Departure Board software ##
-From this repository - `git clone https://github.com/jonmorrissmith/RGB_Matrix_Train_Departure_Board`
-
-### Configuration Options
-
-You can edit the configuration in config.h in to your default settings.
-
-These can be modified at any time in the `config.txt` file or via the user-interface.
-
-_Note_ - these have been optimised for black and white and speed
+Download and build from this repository
 ```
-"from"                       // Your default origin
-"to"                         // Your default destination
-"APIURL"                     // URL for your train data
-"fontPath"                   // Path to fonts 
-"scroll_slowdown_sleep_ms"   // Text scroll speed. Lower=faster
-"refresh_interval_seconds"   // How often train data refreshes
-"Message_Refresh_interval"   // How often the messages are shown
-"matrixcols"                 // Columns in RGB matrix
-"matrixrows"                 // Rows in RGB matrix
-"matrixchain_length"         // Number of panels in the chain
-"matrixparallel"             // Number of paralel chains
-"matrixhardware_mapping",    // RGB adapter hardware
-"gpio_slowdown"              // RGB Matrix tuning.
-"first_line_y"               // Position of the bottom of 1st line of text
-"second_line_y"              // Position of the bottom of 2nd line of text
-"third_line_y",              // Position of the bottom of 3rd line of text
-"fourth_line_y"              // Position of the bottom of 4th line of text
-"third_line_refresh_seconds" // How often 2nd/3rd trains toggle
-"ShowCallingPointETD"        // Calling point departure times
-"ShowMessages",              // Show Network Rail mesages
+git clone https://github.com/jonmorrissmith/RGB_Matrix_Train_Departure_Board
+cd RGB_Matrix_Train_Departure_Board
+./setup.sh
 ```
-Detail of the RGB Matrix library parameters is available [in the RGB Matrix documentation](https://github.com/hzeller/rpi-rgb-led-matrix/blob/master/README.md#changing-parameters-via-command-line-flags)
+This will build the software, create config files and ensure permissions are correctly set on directories.
+
+### And finally Cyril... and finally Esther ###
+Start the UI server
 ```
-"led-multiplexing"
-"led-pixel-mapper"
-"led-pwm-bits"
-"led-brightness"
-"led-scan-mode"
-"led-row-addr-type"
-"led-show-refresh"
-"led-limit-refresh"
-"led-inverse"
-"led-rgb-sequence"
-"led-pwm-lsb-nanoseconds"
-"led-pwm-dither-bits"
-"led-no-hardware-pulse"
-"led-panel-type"
-"led-daemon"
-"led-no-drop-privs"
-"led-drop-priv-user"
-"led-drop-priv-group"
+./run.sh
+```
+You should see:
+```
+Starting server on port 80...
+```
+Which means you can go to `http://<IP address of your Raspberry Pi>` and start using your display!
+
+# First Time Use
+
+## Basic Configuration
+In the UI set:
+```
+from       // The station whose departures you want to show
+to         // Leave blank for all departures or populate for a specific destination
+platform   // Leave blank for all platforms or populate for a specific platform
+```
+## Display options
+In the UI set:
+```
+ShowCallingPointETD   \\ If set to Yes will display departure times after each calling point
+ShowMessages          \\ If set to Yes will display Network Rail message for your departure station
+ShowPlatforms         \\ If set to Yes will display the platform for the departures
+```
+## API and Font Configuration
+In the UI set:
+```
+APIURL     \\ URL for your train data (127.0.0.1:8081 if you've installed Huxley2 locally)
+fontPath   \\ Path to fonts - use /home/<your username>/rpi-rgb-led-matrix/fonts/7x14.bdf
+```
+## Timing Configuration
+In the UI set
+```
+scroll_slowdown_sleep_ms=15     \\ Lower the number, the faster the scroll
+refresh_interval_seconds=60     \\ How often the API is called to refresh the train data
+third_line_refresh_seconds=10   \\ How often the third line switches between 2nd and 3rd departure
+Message_Refresh_interval=20     \\ How often any Network Rail messages are shown
 ```
 
-And compile (may take a while)!
-
-`g++ -O3 -std=c++11 traindisplay.cpp -o traindisplay -lrgbmatrix -lcurl -lpthread -I/home/<your path>/rpi-rgb-led-matrix/include -L/home/<your path>/rpi-rgb-led-matrix/lib`
-
-# And finally Cyril... and finally Esther #
-## Permissions for your home directory ##
-You need to make your home directory world readable - you need to run the executable as root, and root needs permissions.
+## Hardware Configuration
+In the UI set
 ```
-cd
-cd ..
-ls
+matrixcols=128                             \\ Number of columns in an LED matrix panel
+matrixrows=64                              \\ Number of rows in an LED matrix panel
+matrixchain_length=3                       \\ Number of panels you've got chained together
+matrixparallel=1                           \\ Number of chains you've got running in parallel
+matrixhardware_mapping=adafruit-hat-pwm    \\ The hardware adapter you're using to connect the Pi to the LED matrix
+gpio_slowdown=2                            \\ Sometimes the Pi is too fast for the matrix.  Fiddle with this to get the right setting.
 ```
-and you'll see your home directory.
-Make this world-readable `chmod 755 <home directory name>`
+## Display layout configuration (vertical positions)
+```
+first_line_y=12     \\ pixel-row for the first line of text
+second_line_y=29    \\ pixel-row for the second line of text
+third_line_y=46     \\ pixel-row for the third line of text
+fourth_line_y=62    \\ pixel-row for the fourth line of text
+```
+## More RGB Matrix parameters
+It's unlikely that you'll need to change these, but they're available to change if you need to.
 
-## Tweak your configuration file ##
-This can be used to over-ride settings in the configuration class and other customisations.
+Detail of the parameters is available [in the RGB Matrix documentation](https://github.com/hzeller/rpi-rgb-led-matrix/blob/master/README.md#changing-parameters-via-command-line-flags).
+```
+led-multiplexing
+led-pixel-mapper
+led-pwm-bits
+led-brightness
+led-scan-mode
+led-row-addr-type
+led-show-refresh
+led-limit-refresh
+led-inverse
+led-rgb-sequence
+led-pwm-lsb-nanoseconds
+led-pwm-dither-bits
+led-no-hardware-pulse
+led-panel-type
+led-daemon
+led-no-drop-privs
+led-drop-priv-user
+led-drop-priv-group
+```
+## Once you're happy with your configuration
+Scroll to the bottom and click on **Save and Restart**.
 
-# Enjoy Your Departure Board #
+This saves your configuration (to 'config.txt').
 
-Two options available
+You can **Save as Default** and **Rest to Default** to allow you to revert changes.
+
+# Additional Information
+
+## Making output less verbose
+
+Simply remove the `-d` option from the `Executable_command_line` line in `ui-config.txt`
+
+## Setting your configuration in the code 
+
+You can edit `config.h` to hard-code values for parameters which are in `config.txt`
+
+If you do this then it's easiest to run
+```
+make clean
+make
+```
+which will recompile the executable.
 
 ## Command Line Operation ##
 
-Four options all of which also support a '-d' option for debugging information
+Five options all of which also support a '-d' option for debugging information
 
-Use the default configuration in the executable
+Use the hard-coded configuration in the executable
 
 `sudo ./traindisplay`
 
-Use the default configuration in the executable and specify origin and destination
+Use the hard-coded configuration in the executable and specify origin
+
+`sudo ./traindisplay SAC`
+
+Use the hard-coded configuration in the executable and specify origin and destination
 
 `sudo ./traindisplay SAC STP`
 
-Use your configuration file
+Use the configuration file
 
 `sudo ./traindisplay -f <config file>`
 
 Combination of the above
 
-`sudo ./traindisplay SAC STP -f <config file>`
+`sudo ./traindisplay SAC STP -f <config file> -d`
 
-## Lightweight User Interface ##
 
-Good for parameter tweaking and easy operation
-
-### Set up the User Interface ###
-
-Edit the `ui-config.txt` file to reflect your installation (probably just need to replace XXX with your home directory)
-```
-Executable_directory - /home/XXX/RGB_Matrix_Train_Departure_Board
-Executable_command_line - sudo /home/XXX/RGB_Matrix_Train_Departure_Board/traindisplay -f /home/XXX/RGB_Matrix_Train_Departure_Board/config.txt
-Port - 8080
-Defaults_Config_file - /home/XXX/RGB_Matrix_Train_Departure_Board/default-config.txt
-```
-The `default-config.txt` file gives you something to revert to if your tweaking goes astray!
-
-Just copy your existing configuration file.
-```
-cp config.txt default-config.txt
-```
-
-Finally make sure the `config_server.py` script is executable
-```
-chmod 755 config_server.py
-```
-and then start the configuration server
-```
-./config_server.py
-```
-You should see something like:
-```
-Starting server on port 8080...
-```
-which indicates you can do away with manual configuration editing and enjoy the minimal UI experience!
-
-**Note** If you're running Huxley2 locally then that's on port 8081.
-
-**Note** You can run the config server as root if you want the UI to be on port 80.  
-
-If you do this then don't forget to remove the `sudo` from the `Executable_command_line` parameter.
-
-It's then as simple as starting the configuration server with `sudo ./config_server.py`.
-
-### Connect to the User Interface ###
-With the above configuration you can tweak away to your hearts content at `http://<IP address of your Raspberry Pi>:<port>`
-
-Or, if you're using the root option - `http://<IP address of your Raspberry Pi>`
-
-Enjoy!
 
 ### Troubleshooting ###
 I suspect that most of this will centre around the RGB display library:

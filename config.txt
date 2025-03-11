@@ -1,16 +1,21 @@
 # Train Display Configuration File
 # Lines starting with # are comments
-# Replace XXX with your configuration
 
 # Station codes
-from=XXX
-to=XXX
+from=CTK
+to=
+platform=1
+
+# Feature Configuration
+ShowCallingPointETD=Yes
+ShowMessages=Yes
+ShowPlatforms=Yes
 
 # API Configuration
-APIURL=https://XXX
+APIURL=https://api.anotherpartialsuccess.com
 
 # Display font configuration
-fontPath=/home/XXX/rpi-rgb-led-matrix/fonts/7x14.bdf
+fontPath=/home/display/rpi-rgb-led-matrix/fonts/7x14.bdf
 
 # Timing parameters (in milliseconds/seconds)
 scroll_slowdown_sleep_ms=15
@@ -32,9 +37,6 @@ second_line_y=29
 third_line_y=46
 fourth_line_y=62
 
-# Feature configuration
-ShowCallingPointETD=No
-ShowMessages=Yes
 
 # RGB Matrix Library Configuration Parameters
 # Please do not put comments on the same line as values
@@ -68,3 +70,4 @@ led-daemon=false
 led-no-drop-privs=false
 led-drop-priv-user=daemon
 led-drop-priv-group=daemon
+
