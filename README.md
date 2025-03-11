@@ -242,7 +242,7 @@ ShowPlatforms         \\ If set to Yes will display the platform for the departu
 ```
 ## API and Font Configuration
 ```
-APIURL     \\ URL for your train data (127.0.0.1:8081 if you've installed Huxley2 locally)
+APIURL     \\ full URL for train data i.e with https:// header
 fontPath   \\ Path to fonts - use /home/<your username>/rpi-rgb-led-matrix/fonts/7x14.bdf
 ```
 ## Timing Configuration
