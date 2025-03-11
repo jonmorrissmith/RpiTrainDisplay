@@ -209,6 +209,7 @@ Download and build from this repository
 ```
 git clone https://github.com/jonmorrissmith/RGB_Matrix_Train_Departure_Board
 cd RGB_Matrix_Train_Departure_Board
+chmod 755 setup.sh
 ./setup.sh
 ```
 This will build the software, create config files and ensure permissions are correctly set on directories.
@@ -224,30 +225,27 @@ Starting server on port 80...
 ```
 Which means you can go to `http://<IP address of your Raspberry Pi>` and start using your display!
 
-# First Time Use
+# First Time Use - Basic Configuration
+Set the following in the UI
 
-## Basic Configuration
-In the UI set:
+## Location and Destination
 ```
 from       // The station whose departures you want to show
 to         // Leave blank for all departures or populate for a specific destination
 platform   // Leave blank for all platforms or populate for a specific platform
 ```
-## Display options
-In the UI set:
+## Additional Information
 ```
 ShowCallingPointETD   \\ If set to Yes will display departure times after each calling point
 ShowMessages          \\ If set to Yes will display Network Rail message for your departure station
 ShowPlatforms         \\ If set to Yes will display the platform for the departures
 ```
 ## API and Font Configuration
-In the UI set:
 ```
 APIURL     \\ URL for your train data (127.0.0.1:8081 if you've installed Huxley2 locally)
 fontPath   \\ Path to fonts - use /home/<your username>/rpi-rgb-led-matrix/fonts/7x14.bdf
 ```
 ## Timing Configuration
-In the UI set
 ```
 scroll_slowdown_sleep_ms=15     \\ Lower the number, the faster the scroll
 refresh_interval_seconds=60     \\ How often the API is called to refresh the train data
@@ -256,7 +254,6 @@ Message_Refresh_interval=20     \\ How often any Network Rail messages are shown
 ```
 
 ## Hardware Configuration
-In the UI set
 ```
 matrixcols=128                             \\ Number of columns in an LED matrix panel
 matrixrows=64                              \\ Number of rows in an LED matrix panel
@@ -265,6 +262,7 @@ matrixparallel=1                           \\ Number of chains you've got runnin
 matrixhardware_mapping=adafruit-hat-pwm    \\ The hardware adapter you're using to connect the Pi to the LED matrix
 gpio_slowdown=2                            \\ Sometimes the Pi is too fast for the matrix.  Fiddle with this to get the right setting.
 ```
+
 ## Display layout configuration (vertical positions)
 ```
 first_line_y=12     \\ pixel-row for the first line of text
@@ -272,8 +270,16 @@ second_line_y=29    \\ pixel-row for the second line of text
 third_line_y=46     \\ pixel-row for the third line of text
 fourth_line_y=62    \\ pixel-row for the fourth line of text
 ```
-## More RGB Matrix parameters
-It's unlikely that you'll need to change these, but they're available to change if you need to.
+
+## Once you're happy with your configuration
+Scroll to the bottom and click on **Save and Restart**.
+
+This saves your configuration (to 'config.txt') and (re)starts the display.
+
+You can **Save as Default** and **Rest to Default** to allow you to revert changes.
+
+# Advanced Configuration
+It's unlikely that you'll need to change these, but they're available if you need to.
 
 Detail of the parameters is available [in the RGB Matrix documentation](https://github.com/hzeller/rpi-rgb-led-matrix/blob/master/README.md#changing-parameters-via-command-line-flags).
 ```
@@ -296,18 +302,18 @@ led-no-drop-privs
 led-drop-priv-user
 led-drop-priv-group
 ```
-## Once you're happy with your configuration
-Scroll to the bottom and click on **Save and Restart**.
-
-This saves your configuration (to 'config.txt').
-
-You can **Save as Default** and **Rest to Default** to allow you to revert changes.
 
 # Additional Information
 
 ## Making output less verbose
 
 Simply remove the `-d` option from the `Executable_command_line` line in `ui-config.txt`
+
+## Running on another port
+
+Change the port in `ui-config.txt`.
+
+Note that the executable needs root to access the RGB matrix.
 
 ## Setting your configuration in the code 
 
@@ -318,7 +324,7 @@ If you do this then it's easiest to run
 make clean
 make
 ```
-which will recompile the executable.
+which will recompile the executable with your defaults.
 
 ## Command Line Operation ##
 
@@ -343,8 +349,6 @@ Use the configuration file
 Combination of the above
 
 `sudo ./traindisplay SAC STP -f <config file> -d`
-
-
 
 ### Troubleshooting ###
 I suspect that most of this will centre around the RGB display library:
