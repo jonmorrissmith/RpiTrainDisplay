@@ -182,29 +182,38 @@ There are two options - as far as I can tell the data available via both feeds i
 This is the easiest of the two options. 
 
 ## Sign up 
-Go to [raildata.org.uk](https://raildata.org.uk) and [register](https://raildata.org.uk/registerPartner).  It's likely you'll fall into the **Individual not affiliated with a company** category.
+Go to [raildata.org.uk](https://raildata.org.uk) and [register](https://raildata.org.uk/registerPartner).  
+
+It's likely you'll fall into the **Individual not affiliated with a company** category.
 
 Once you've got your acccount set up you need to subscribe to the data feed.
 
 ## Subscribe to Live Departure Board data
 The easiest way to find this is via the [Data Products Catalogue](https://raildata.org.uk/dashboard/dataProducts).  From here search for **Live Departure Board**.
 
-The one you need is published by the Rail Delivery Group.  Don't use the 'Staff Version' as that isn't compatible with this software.
+The one you need is published by the Rail Delivery Group.  
+
+Don't use the 'Staff Version' as that isn't compatible with this software.
 
 ## Get your API Key
 The landing page for the Live Departure Board data has a **Specifications tab**.
 
-On that tab you'll find the **API access credentials** - you need to **Consumer key**.  Press the `Copy` button and drop it into the `APIKey` field in `config.txt`.
+On that tab you'll find the **API access credentials** - you need the **Consumer key**.  
+
+Press the `Copy` button and drop it into the `APIKey` field in `config.txt`.
 
 **Note** Make sure there are no spaces in the configuration - `APIkey=123456aVeryLongString`.
+
 **Note** Be sure to set `Rail_Data_Marketplace=Yes` in the configuration file. 
 
 # Network Rail
-This is more complex as the API uses SOAP - not ideal for C++.
+This is more complex as the API uses SOAP - not ideal for C++ - so a proxy is required.
 
-You can get around this using [Huxley2](https://github.com/jpsingleton/Huxley2). More detail on [this site which includes a demo server](https://huxley2.azurewebsites.net).
+[Huxley2](https://github.com/jpsingleton/Huxley2) is a cross-platform JSON proxy for the GB railway Live Departure Boards SOAP API. 
 
-I've created a fork of Huxley2 for running locally on a raspberry Pi - [Huxley 2 for Raspberry Pi](https://github.com/jonmorrissmith/jonms-Huxley2) - you can also run [on Azure](https://unop.uk/huxley-2-release).
+More detail on [this site which includes a demo server](https://huxley2.azurewebsites.net).
+
+I've created a fork of Huxley2 for running locally on a raspberry Pi - [Huxley 2 for Raspberry Pi](https://github.com/jonmorrissmith/jonms-Huxley2) - or you can run [on Azure](https://unop.uk/huxley-2-release).
 
 With the monochrome configuration below a install on the Raspberry Pi used for the RGB matrix doesn't affect performance.
 
