@@ -1,16 +1,16 @@
 # RGB Matrix Train Departure Board
-Rather than paying rather a lot of money, you can your own RGB matrix train departure board.
+A way to build your own RGB matrix train departure board powered by a Raspberry Pi.
 
-Command line or via a light-weight web-page you can access on any device.
+Configurable via a light-weight web-page or the command line.
 
 You can select:
 * All trains from a station
 * All trains from a station on a specified platform
 * All trains from a station to a specified destination
-* Or combinations of the above.
+* Or combinations of the above
   
 Default display:
-* The next train with calling points
+* The next train with calling points, operator and formation
 * The following two departures - destination and departure times
 * Any delay-related messages
   
@@ -19,7 +19,7 @@ Options to display
 * Estinated departure time for calling points
 * Any National Rail messages for the station
 
-Components are a Raspberry Pi, a matrix-adapter (Adafruit RGB matrix bonnet), some RGB matrices and a power-supply.
+Components are a Raspberry Pi 4, a matrix-adapter (Adafruit RGB matrix bonnet), some RGB matrices and a power-supply.
 
 There are some limitations with using this hardware which I suspect don't apply to commercially-available units.
 
@@ -34,14 +34,7 @@ These look amazing... however the price is offputting, as is the monthly-subscri
 
 My thought -  _"How hard can it be"_.
 
-And here we are - the Raspberry Pi RGB matrix departure board and companion [Raspberry Pi fork of Huxley2](https://github.com/jonmorrissmith/jonms-Huxley2).
-
-# This documentation is evolving
-In this second version (1st March) there's still gaps, however it's a lot more complete than it was.
-
-Happy to help with any questions - best to do that via github so others can share the wisdom.
-
-Updates, changes, modifications and enhancements welcome!
+And here we are.
 
 # Hardware
 ## The TL:DR
@@ -183,24 +176,37 @@ sudo ./demo -D9 --led-rows=64 --led-cols=128 --led-chain=3 --led-gpio-mapping=ad
 Have fun!
 
 # So what about the train data? #
-The source of the data is the [Live Departure Boards Web Service (LDBWS / OpenLDBWS)](https://lite.realtime.nationalrail.co.uk/OpenLDBWS/)
+There are two options - as far as I can tell the data available via both feeds is the same.
 
-You'll need to register to be able to access the data - this is pretty straightforward via the [Open LDBWS Registration page](https://realtime.nationalrail.co.uk/OpenLDBWSRegistration).  Make a note of the key (although they email it to you aswell).
+# Rail Data Marketplace
+This is the easiest of the two options. 
 
-I'll include more links later - there is a wealth of information out there on train data and a mind-boggling amount of information you can get access too (although it's not all free).  The [Open Rail Data wiki](https://wiki.openraildata.com/index.php/Main_Page) is an awesome resource as is the list of [Open Rail data repositories](https://github.com/openraildata) here on Github.
+## Sign up 
+Go to [raildata.org.uk](https://raildata.org.uk) and [register](https://raildata.org.uk/registerPartner).  It's likely you'll fall into the **Individual not affiliated with a company** category.
 
-**However** the data is only available from Network Rail via SOAP.  Not my forte.  If you're a Python programmer then you can go to the [Open Rail Data repository](https://github.com/openraildata) however, being an old lag and liking the enhanced performance of a compiled executable, C++ was the way to go.  I'm not about to try to ingest SOAP with C++.
+Once you've got your acccount set up you need to subscribe to the data feed.
 
-## Huxley2 to the rescue ##
-Huxley2 is a cross-platform JSON proxy for the GB railway Live Departure Boards SOAP API and is [here on Github](https://github.com/jpsingleton/Huxley2). More detail on [this site which includes a demo server](https://huxley2.azurewebsites.net).
+## Subscribe to Live Departure Board data
+The easiest way to find this is via the [Data Products Catalogue](https://raildata.org.uk/dashboard/dataProducts).  From here search for **Live Departure Board**.
 
-I've create a fork of Huxley2 with modifications for running locally on a raspberry Pi - [Huxley 2 for Raspberry Pi](https://github.com/jonmorrissmith/jonms-Huxley2).
+The one you need is published by the Rail Delivery Group.  Don't use the 'Staff Version' as that isn't compatible with this software.
 
-However you can also install on Azure. The instructions for this are fabulous are are available [on this blog post](https://unop.uk/huxley-2-release).
+## Get your API Key
+The landing page for the Live Departure Board data has a **Specifications tab**.
 
-With the monochrome cofiguration below a local-install doesn't affect performance.
+On that tab you'll find the **API access credentials** - you need to **Consumer key**.  Press the `Copy` button and drop it into the `APIKey` field in `config.txt`.
 
-If you go for colour (or increase `led-pwm-bits` from 1) then you may see fickering when updates happen.
+**Note** Make sure there are no spaces in the configuration - `APIkey=123456aVeryLongString`.
+**Note** Be sure to set `Rail_Data_Marketplace=Yes` in the configuration file. 
+
+# Network Rail
+This is more complex as the API uses SOAP - not ideal for C++.
+
+You can get around this using [Huxley2](https://github.com/jpsingleton/Huxley2). More detail on [this site which includes a demo server](https://huxley2.azurewebsites.net).
+
+I've created a fork of Huxley2 for running locally on a raspberry Pi - [Huxley 2 for Raspberry Pi](https://github.com/jonmorrissmith/jonms-Huxley2) - you can also run [on Azure](https://unop.uk/huxley-2-release).
+
+With the monochrome configuration below a install on the Raspberry Pi used for the RGB matrix doesn't affect performance.
 
 # The final Steps #
 
@@ -230,9 +236,9 @@ Set the following in the UI
 
 ## Location and Destination
 ```
-from       // The station whose departures you want to show
-to         // Leave blank for all departures or populate for a specific destination
-platform   // Leave blank for all platforms or populate for a specific platform
+from       \\ The station whose departures you want to show
+to         \\ Leave blank for all departures or populate for a specific destination
+platform   \\ Leave blank for all platforms or populate for a specific platform
 ```
 ## Additional Information
 ```
@@ -242,8 +248,13 @@ ShowPlatforms         \\ If set to Yes will display the platform for the departu
 ```
 ## API and Font Configuration
 ```
-APIURL     \\ full URL for train data i.e with https:// header
-fontPath   \\ Path to fonts - use /home/<your username>/rpi-rgb-led-matrix/fonts/7x14.bdf
+APIURL                   \\ full URL for Network Rail data (i.e with the https:// header)
+APIkey                   \\ Any API key you need to use (applied using x-apikey:)
+Rail_Data_Marketplace    \\ If set to Yes will use the Rail Data Marketplace URL (and over-ride APIURL).
+```
+## Font configuration
+```
+fontPath  \\ Path to fonts - you can use the matrix package (/home/<your username>/rpi-rgb-led-matrix/fonts/7x14.bdf)
 ```
 ## Timing Configuration
 ```
@@ -350,12 +361,35 @@ Combination of the above
 
 `sudo ./traindisplay SAC STP -f <config file> -d`
 
-### Troubleshooting ###
-I suspect that most of this will centre around the RGB display library:
+# Troubleshooting #
+**RGB Matrix Issues**
 * [Changing parameters](https://github.com/hzeller/rpi-rgb-led-matrix/blob/master/README.md#changing-parameters-via-command-line-flags)
 * [Troubleshooting](https://github.com/hzeller/rpi-rgb-led-matrix/blob/master/README.md#troubleshooting)
 
-Otherwise feel free to raise an Issue here on github and I'll try to help!
+**Software Issues**
+
+The most fragile part of the software is the parser.  
+
+You can test this using software included in the distribution built using `make parser_test`.
+
+Running `traindisplay` with the debug flag dumps results from API calls into the tmp directory.
+
+You can test the parser against this data using `./parser_test -data /tmp/traindisplay_payload.json`.
+
+Other options are available:
+```
+Usage: ./parser_test -data <string> [-platform <string>] [-clean <string>] [-f <string>] [-debug <string>]
+-data <filename.json>   json data file
+-platform <string>      select a platform
+-clean <y/n>            remove whitespace
+-f <filename.txt>       file (not currently in use)
+-debug <y/n>            switch on debug info in the parser code
+```
+Feel free to raise an Issue here and I'll try to help - attach your `config.txt` and `debug.txt` created using 
+```
+./parser_test -data /tmp/traindisplay_payload.json -debug y > debug.txt
+```
+
 
 # Huge thanks to... #
 

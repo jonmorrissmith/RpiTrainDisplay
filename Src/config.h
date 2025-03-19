@@ -34,6 +34,8 @@ private:
         {"from", ""},
         {"to", ""},
         {"APIURL", ""},
+        {"APIkey", ""},
+        {"Rail_Data_Marketplace", ""},
         {"fontPath", ""},
         {"scroll_slowdown_sleep_ms", "15"},
         {"refresh_interval_seconds", "60"},
