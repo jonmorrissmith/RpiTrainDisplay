@@ -4,17 +4,17 @@
 # Station codes
 from=CTK
 to=
-platform=1
+platform=
 
 # Feature Configuration
-ShowCallingPointETD=No
+ShowCallingPointETD=Yes
 ShowMessages=Yes
 ShowPlatforms=Yes
 
 # API Configuration
-APIURL=https://api.anotherpartialsuccess.com
-APIkey=3u5XcPKXbg8h55AMJUSeIVg84fGzWPL1oguYDJDsnhjoArrq
-Rail_Data_Marketplace=Yes
+APIURL=
+APIkey=
+Rail_Data_Marketplace=
 
 # Display font configuration
 fontPath=/home/display/rpi-rgb-led-matrix/fonts/7x14.bdf
