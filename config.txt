@@ -2,20 +2,22 @@
 # Lines starting with # are comments
 
 # Station codes
-from=
+from=CTK
 to=
 platform=1
 
 # Feature Configuration
-ShowCallingPointETD=Yes
+ShowCallingPointETD=No
 ShowMessages=Yes
 ShowPlatforms=Yes
 
 # API Configuration
-APIURL=
+APIURL=https://api.anotherpartialsuccess.com
+APIkey=3u5XcPKXbg8h55AMJUSeIVg84fGzWPL1oguYDJDsnhjoArrq
+Rail_Data_Marketplace=Yes
 
 # Display font configuration
-fontPath=
+fontPath=/home/display/rpi-rgb-led-matrix/fonts/7x14.bdf
 
 # Timing parameters (in milliseconds/seconds)
 scroll_slowdown_sleep_ms=15
