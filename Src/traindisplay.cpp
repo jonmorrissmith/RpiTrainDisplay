@@ -81,7 +81,6 @@ void processCommandLineArgs(int argc, char* argv[], Config& config) {
     // Load configuration file if specified
     if (!config_file.empty()) {
         try {
-            DEBUG_PRINT("Loading config from: " << config_file);
             config.loadFromFile(config_file);
         } catch (const std::exception& e) {
             std::cerr << "Error loading config file: " << e.what() << std::endl;
@@ -125,7 +124,6 @@ void processCommandLineArgs(int argc, char* argv[], Config& config) {
     DEBUG_PRINT("Final configuration:");
     DEBUG_PRINT("From: " << config.get("from"));
     DEBUG_PRINT("To: " << config.get("to"));
-    DEBUG_PRINT("API URL: " << config.get("APIURL"));
     DEBUG_PRINT("Show Calling Point ETD: " << config.getBool("ShowCallingPointETD"));
     DEBUG_PRINT("Show Messages: " << config.getBool("ShowMessages"));
     DEBUG_PRINT("Show Platforms: " << config.getBool("ShowPlatforms"));
@@ -149,7 +147,7 @@ int main(int argc, char* argv[]) {
         }
         
         // Create API client
-        TrainAPIClient apiClient(config.get("APIURL"));
+        TrainAPIClient apiClient(config.get("APIURL"), config.get("APIkey"), config.getBool("Rail_Data_Marketplace"));
         
         // Make initial API call and set up parser
         std::string api_data;

@@ -44,6 +44,8 @@ public:
     
     void findServicesAtPlatform(const std::string& selectedPlatform);
     int returnServiceAtPlatform(int serviceNumber);
+
+    bool isCancelled(size_t serviceIndex);
     
     size_t getNumberOfServices();
     std::string getScheduledDepartureTime(size_t serviceIndex);
@@ -52,7 +54,12 @@ public:
     std::string getDestinationLocation(size_t serviceIndex);
     std::string getLocationNameList(size_t serviceIndex);
     std::string getDelayReason(size_t serviceIndex);
+    std::string getCancelReason(size_t serviceIndex);
+    std::string getadhocAlerts(size_t serviceIndex);
+    std::string getCoaches(size_t serviceIndex, bool addMessage);
+    std::string getOperator(size_t serviceIndex);
     std::string getNrccMessages();
 };
 
 #endif // TRAIN_SERVICE_PARSER_H
+

@@ -18,6 +18,8 @@ Config::Config() {
 }
 
 void Config::loadFromFile(const std::string& filename) {
+    DEBUG_PRINT("Loading configuration from " << filename);
+
     std::ifstream file(filename);
     if (!file.is_open()) {
         throw std::runtime_error("Could not open config file: " + filename);

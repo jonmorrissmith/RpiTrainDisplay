@@ -24,12 +24,12 @@ void TrainServiceParser::findServicesAtPlatform(const std::string& selectedPlatf
     std::lock_guard<std::mutex> lock(dataMutex);
     
     // Reset the PlatformServices array to all empty strings (no services)
-    PlatformServices.fill(-1);  
+    PlatformServices.fill(-1);
     
     try {
         // Check if train services exist in the data
-        if (data.find("trainServices") == data.end() || 
-            data["trainServices"].is_null() || 
+        if (data.find("trainServices") == data.end() ||
+            data["trainServices"].is_null() ||
             data["trainServices"].empty()) {
             DEBUG_PRINT("No train services found in the data");
             return;
@@ -43,22 +43,28 @@ void TrainServiceParser::findServicesAtPlatform(const std::string& selectedPlatf
         for (size_t i = 0; i < data["trainServices"].size() && serviceCount < PlatformServices.size(); ++i) {
             const auto& service = data["trainServices"][i];
             
-            // Check if platform exists and matches the selected platform
-            if (!service["platform"].is_null() && 
-                service["platform"].get<std::string>() == selectedPlatform) {
+            // First check if the platform field exists
+            if (service.contains("platform")) {
+                // DEBUG_PRINT("iteration " << i << " contains platform " << service["platform"].get<std::string>());
                 
-                // Found a service for the selected platform, add its serviceID to the array
-                // PlatformServices[serviceCount] = service["serviceID"].get<std::string>();  // Changed from static_cast<int>(i)
-                PlatformServices[serviceCount] = i;
-                
-                // Debug information about the found service
-                DEBUG_PRINT("Found service at index " << i << " for platform " << selectedPlatform 
-                    << " - Destination: " << service["destination"][0]["locationName"].get<std::string>()
-                    << " - Scheduled departure: " << service["std"].get<std::string>()
-                    << " - Status: " << service["etd"].get<std::string>());
-                
-                // Increment the count of services found
-                ++serviceCount;
+                // Now check if platform value matches the selected platform
+                if (!service["platform"].is_null() &&
+                    service["platform"].get<std::string>() == selectedPlatform) {
+                    
+                    // Found a service for the selected platform, add its index to the array
+                    PlatformServices[serviceCount] = i;
+                    
+                    // Debug information about the found service
+                    DEBUG_PRINT("Found service at index " << i << " for platform " << selectedPlatform
+                        << " - Destination: " << service["destination"][0]["locationName"].get<std::string>()
+                        << " - Scheduled departure: " << service["std"].get<std::string>()
+                        << " - Status: " << service["etd"].get<std::string>());
+                    
+                    // Increment the count of services found
+                    ++serviceCount;
+                }
+            } else {
+                DEBUG_PRINT("iteration " << i << " does not contain a platform field");
             }
         }
         
@@ -239,6 +245,114 @@ std::string TrainServiceParser::getLocationNameList(size_t serviceIndex) {
     }
 }
 
+bool TrainServiceParser::isCancelled(size_t serviceIndex) {
+    std::lock_guard<std::mutex> lock(dataMutex);
+    try {   
+        if (serviceIndex >= data["trainServices"].size()) {
+            throw std::out_of_range("Service index out of range");
+        }   
+        return data["trainServices"][serviceIndex]["isCancelled"].get<bool>();
+    } catch (const json::exception& e) {
+        DEBUG_PRINT("Error getting cancelled status: " << e.what());
+        return ""; // Return empty string in case of error
+    }   
+}
+
+std::string TrainServiceParser::getCancelReason(size_t serviceIndex) {
+    std::lock_guard<std::mutex> lock(dataMutex);
+    try {
+        if (serviceIndex >= data["trainServices"].size()) {
+            throw std::out_of_range("Service index out of range");
+        }
+        // If cancelReason exists, is not null, and isn't empty, return it
+        if (data["trainServices"][serviceIndex].find("cancelReason") != data["trainServices"][serviceIndex].end() &&
+            !data["trainServices"][serviceIndex]["cancelReason"].is_null() &&
+            !data["trainServices"][serviceIndex]["cancelReason"].get<std::string>().empty()) {
+            return data["trainServices"][serviceIndex]["cancelReason"].get<std::string>();
+        }
+        return ""; // No cancellation or no reason provided
+    } catch (const json::exception& e) {
+        DEBUG_PRINT("Error getting cancellation reason: " << e.what());
+        return ""; // Return empty string in case of error
+    }
+}
+
+std::string TrainServiceParser::getadhocAlerts(size_t serviceIndex){
+    std::lock_guard<std::mutex> lock(dataMutex);
+    try {
+        if (serviceIndex >= data["trainServices"].size()) {
+            throw std::out_of_range("Service index out of range");
+        }
+        // If adhocAlerts exists, is not null, and isn't empty, return it
+        if (data["trainServices"][serviceIndex].find("adhocAlerts") != data["trainServices"][serviceIndex].end() &&
+            !data["trainServices"][serviceIndex]["adhocAlerts"].is_null() &&
+            !data["trainServices"][serviceIndex]["adhocAlerts"].get<std::string>().empty()) {
+            return data["trainServices"][serviceIndex]["adhocAlerts"].get<std::string>();
+        }
+        return ""; // No adhoc alert
+    } catch (const json::exception& e) {
+        DEBUG_PRINT("Error getting Adhoc Alerts: " << e.what());
+        return ""; // Return empty string in case of error
+    }
+}
+
+
+
+std::string TrainServiceParser::getCoaches(size_t serviceIndex, bool addMessage) {
+    std::lock_guard<std::mutex> lock(dataMutex);
+    size_t coaches;
+    std::string ss;
+    try {
+        if (serviceIndex >= data["trainServices"].size()) {
+            throw std::out_of_range("Service index out of range");
+        }
+        // If coaches exists (NRE data), is not null, and isn't empty
+        if (data["trainServices"][serviceIndex].find("coaches") != data["trainServices"][serviceIndex].end() &&
+            !data["trainServices"][serviceIndex]["coaches"].is_null() &&
+            !data["trainServices"][serviceIndex]["coaches"].get<std::string>().empty()) {
+            ss = data["trainServices"][serviceIndex]["coaches"].get<std::string>();
+        }
+        // I length exists (Raildata Marketplace), is not 0, and isn't empty, return it
+        if (data["trainServices"][serviceIndex].find("length") != data["trainServices"][serviceIndex].end() &&
+            !data["trainServices"][serviceIndex]["length"].is_null()) {
+            coaches = data["trainServices"][serviceIndex]["length"].get<size_t>();
+            if (coaches !=0) {
+                ss = std::to_string(coaches);
+            }
+        }
+        if (ss.empty()) {
+            return ""; // No coach data
+        } else {
+            if (addMessage) {
+                ss = " formed of " + ss + " coaches";
+            }
+            return ss;
+        }
+    } catch (const json::exception& e) {
+        DEBUG_PRINT("Error getting coach information " << e.what());
+        return ""; // Return empty string in case of error
+    }
+}
+
+std::string TrainServiceParser::getOperator(size_t serviceIndex) {
+    std::lock_guard<std::mutex> lock(dataMutex);
+    try {
+        if (serviceIndex >= data["trainServices"].size()) {
+            throw std::out_of_range("Service index out of range");
+        }
+        // If operator exists, is not null, and isn't empty, return it
+        if (data["trainServices"][serviceIndex].find("operator") != data["trainServices"][serviceIndex].end() &&
+            !data["trainServices"][serviceIndex]["operator"].is_null() &&
+            !data["trainServices"][serviceIndex]["operator"].get<std::string>().empty()) {
+            return "   A " + data["trainServices"][serviceIndex]["operator"].get<std::string>() + " service";
+        }
+        return ""; // No operator
+    } catch (const json::exception& e) {
+        DEBUG_PRINT("Error getting operator information " << e.what());
+        return ""; // Return empty string in case of error
+    }
+}
+
 std::string TrainServiceParser::getDelayReason(size_t serviceIndex) {
     std::lock_guard<std::mutex> lock(dataMutex);
     try {
@@ -248,7 +362,7 @@ std::string TrainServiceParser::getDelayReason(size_t serviceIndex) {
         
         // Check if the service is delayed
         std::string etd = data["trainServices"][serviceIndex]["etd"].get<std::string>();
-        if (etd != "On time" && etd != "Cancelled" && etd != "Delayed") {
+        if (etd != "On time" && etd != "Cancelled" ) {
             // If delayReason exists, is not null, and isn't empty, return it
             if (data["trainServices"][serviceIndex].find("delayReason") != data["trainServices"][serviceIndex].end() && 
                 !data["trainServices"][serviceIndex]["delayReason"].is_null() &&
@@ -266,21 +380,34 @@ std::string TrainServiceParser::getDelayReason(size_t serviceIndex) {
 std::string TrainServiceParser::getNrccMessages() {
     std::lock_guard<std::mutex> lock(dataMutex);
     try {
-        if (data.find("nrccMessages") != data.end() && 
-            data["nrccMessages"].is_array() && 
+        if (data.find("nrccMessages") != data.end() &&
+            data["nrccMessages"].is_array() &&
             !data["nrccMessages"].empty()) {
-            
+
             std::stringstream ss;
             
             for (size_t i = 0; i < data["nrccMessages"].size(); ++i) {
                 if (i > 0) ss << " | ";
                 
-                // Extract the value from the message
-                std::string message = data["nrccMessages"][i]["value"].get<std::string>();
+                std::string message;
+                const auto& messageObj = data["nrccMessages"][i];
+                
+                // Try both "Value" and "value" field names
+                if (messageObj.contains("Value") && !messageObj["Value"].is_null()) {
+                    message = messageObj["Value"].get<std::string>();
+                    // DEBUG_PRINT("Found NRCC message with 'Value' field (capital V)" );
+                }
+                else if (messageObj.contains("value") && !messageObj["value"].is_null()) {
+                    message = messageObj["value"].get<std::string>();
+                    // DEBUG_PRINT("Found NRCC message with 'value' field (lowercase V");
+                }
+                else {
+                    DEBUG_PRINT("Message at index " << i << " has neither 'Value' nor 'value' field, or it's null");
+                    continue; // Skip this message
+                }
                 
                 // Process HTML tags
                 message = processHtmlTags(message);
-                
                 ss << message;
             }
             return ss.str();

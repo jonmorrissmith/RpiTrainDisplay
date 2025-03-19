@@ -26,9 +26,11 @@ static size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* use
 class TrainAPIClient {
 private:
     std::string base_url;
+    std::string base_url_key;
+    bool rail_data_marketplace;
     
 public:
-    TrainAPIClient(const std::string& api_url);
+    TrainAPIClient(const std::string& api_url, const std::string& api_key, bool use_rdm);
     
     std::string fetchDepartures(const std::string& from, const std::string& to) const;
 };
