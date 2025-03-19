@@ -178,12 +178,28 @@ Have fun!
 # So what about the train data? #
 There are two options - as far as I can tell the data available via both feeds is the same.
 
-## Rail Data Marketplace
+# Rail Data Marketplace
 This is the easiest of the two options. 
 
-You'll need to register and get an API key - see Using the Rail Data Marketplace API for more detail.
+## Sign up 
+Go to [raildata.org.uk](https://raildata.org.uk) and [register](https://raildata.org.uk/registerPartner).  It's likely you'll fall into the **Individual not affiliated with a company** category.
 
-## Network Rail
+Once you've got your acccount set up you need to subscribe to the data feed.
+
+## Subscribe to Live Departure Board data
+The easiest way to find this is via the [Data Products Catalogue](https://raildata.org.uk/dashboard/dataProducts).  From here search for **Live Departure Board**.
+
+The one you need is published by the Rail Delivery Group.  Don't use the 'Staff Version' as that isn't compatible with this software.
+
+## Get your API Key
+The landing page for the Live Departure Board data has a **Specifications tab**.
+
+On that tab you'll find the **API access credentials** - you need to **Consumer key**.  Press the `Copy` button and drop it into the `APIKey` field in `config.txt`.
+
+**Note** Make sure there are no spaces in the configuration - `APIkey=123456aVeryLongString`.
+**Note** Be sure to set `Rail_Data_Marketplace=Yes` in the configuration file. 
+
+# Network Rail
 This is more complex as the API uses SOAP - not ideal for C++.
 
 You can get around this using [Huxley2](https://github.com/jpsingleton/Huxley2). More detail on [this site which includes a demo server](https://huxley2.azurewebsites.net).
@@ -232,9 +248,9 @@ ShowPlatforms         \\ If set to Yes will display the platform for the departu
 ```
 ## API and Font Configuration
 ```
-APIURL                   \\ full URL for train data (i.e with the https:// header)
-APIkey                   \\ the API key (if you need one, which you will for Rail Data Marketplace)
-Rail_Data_Marketplace    \\ If set to Yes will use the Rail Data Marketplace API
+APIURL                   \\ full URL for Network Rail data (i.e with the https:// header)
+APIkey                   \\ Any API key you need to use (applied using x-apikey:)
+Rail_Data_Marketplace    \\ If set to Yes will use the Rail Data Marketplace URL (and over-ride APIURL).
 ```
 ## Font configuration
 ```
@@ -352,11 +368,13 @@ Combination of the above
 
 **Software Issues**
 
-The most fragile part of the software is the parser.  You can test this using software included in the distribution built using `make parser_test`.
+The most fragile part of the software is the parser.  
+
+You can test this using software included in the distribution built using `make parser_test`.
 
 Running `traindisplay` with the debug flag dumps results from API calls into the tmp directory.
 
-You can test the parser against this using `./parser_test -data /tmp/traindisplay_payload.json`.
+You can test the parser against this data using `./parser_test -data /tmp/traindisplay_payload.json`.
 
 Other options are available:
 ```
