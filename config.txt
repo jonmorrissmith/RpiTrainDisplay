@@ -1,5 +1,6 @@
 # Train Display Configuration File
 # Lines starting with # are comments
+# Setting here will overide anything in config.h
 
 # Station codes
 from=CTK
@@ -17,7 +18,7 @@ APIkey=
 Rail_Data_Marketplace=
 
 # Display font configuration
-fontPath=/home/display/rpi-rgb-led-matrix/fonts/7x14.bdf
+fontPath=
 
 # Timing parameters (in milliseconds/seconds)
 scroll_slowdown_sleep_ms=15
