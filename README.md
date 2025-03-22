@@ -109,6 +109,16 @@ Connect to the panels and the 5v screw-connectors on the Adafruit bonnet to powe
 
 As noted in the documentation, the Raspberry Pi doesn't have enough juice to power the panels.
 
+### Joining the panels together ###
+
+A chance to be creative!  
+
+To get you started I've provided a very basic solution to 3D print joiners.
+
+You can set the key parameters to create a joiner specific to your panels.
+
+More detail in the Joiner Directory.
+
 # Setting up the Raspberry Pi #
 
 ## Install the OS ##
