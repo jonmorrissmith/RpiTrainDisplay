@@ -2,7 +2,7 @@
 //
 // The parser is the most fragile part of the traindisplay.
 //
-// A suite of tests to check parsing works and for bug reporting.!
+// A suite of tests to check parsing works and for bug reporting!
 //
 // -debug       Switches on debug info in the parser code
 // -platform    For use if you need to test a specific platform
@@ -80,7 +80,7 @@ std::string readTextFile(const std::string& filename) {
 // Remove whitespce
 
 void removeAllWhitespace(std::string& str) {
-    str.erase(std::remove_if(str.begin(), str.end(), 
+    str.erase(std::remove_if(str.begin(), str.end(),
                             [](unsigned char c) { return std::isspace(c); }),
               str.end());
 }
@@ -95,6 +95,7 @@ int main(int argc, char* argv[]) {
     std::string config_file;
     TrainServiceParser parser;
     size_t num_services;
+    size_t service;
     int departureNumber;
     size_t i;
     bool yesno;
@@ -151,91 +152,119 @@ int main(int argc, char* argv[]) {
 
     // Display parameters for use when output sent as debug output
     std::cout << "--- Parser Test Parameters ---" << std::endl;
-    std::cout << "Data file: " << data_file << std::endl;
+     std::cout << "Data file: " << data_file << std::endl;
+     if (!platform.empty()) {
+         std::cout << "Platform: " << platform << std::endl;
+     }
+     if (!clean_data.empty()) {
+         std::cout << "Clean data: " << clean_data << std::endl;
+     }
+     if (!config_file.empty()) {
+         std::cout << "Config file: " << config_file << std::endl;
+     }
+     if (!debug.empty()) {
+         std::cout << "Debug:: " << debug << " debug_mode: "<< debug_mode << std::endl;
+     } else {
+         std::cout << "debug_mode: "<< debug_mode << std::endl;
+     }
+
+     std::cout << "------------------------------" << std::endl;
+
+     parser.updateData(data);
+
+    // Functions to test
+    //
+    // void setShowCallingPointETD(bool show);
+    // void setSelectedPlatform(const std::string& platform);
+    // void unsetSelectedPlatform();
+    // void findServices();
+    // bool isCancelled(size_t serviceIndex);
+    // bool isDelayed(size_t serviceIndex);
+    // size_t getNumberOfServices();
+    // size_t getFirstDeparture();
+    // size_t getSecondDeparture();
+    // size_t getThirdDeparture();
+    // std::string getScheduledDepartureTime(size_t serviceIndex);
+    // std::string getEstimatedDepartureTime(size_t serviceIndex);
+    // std::string getPlatform(size_t serviceIndex);
+    // std::string getDestination(size_t serviceIndex);
+    // std::string getCallingPoints(size_t serviceIndex);
+    // std::string getCoaches(size_t serviceIndex, bool addText);
+    // std::string getOperator(size_t serviceIndex);
+    // std::string getNrccMessages();
+    // std::string getDelayReason(size_t serviceIndex);
+    // std::string getCancelReason(size_t serviceIndex);
+    // std::string getadhocAlerts(size_t serviceIndex);
+
+    num_services = parser.getNumberOfServices();
+    std::cout << "Number of Services: " << num_services << std::endl;;
+
+    for (i=0; i< num_services; i++) {
+       std::cout << "==========================================================" << std::endl;
+       std::cout << "serviceIndex: " << i << std::endl;
+
+
+       std::cout << "getScheduledDepartureTime: " << parser.getScheduledDepartureTime(i) << std::endl;
+       std::cout << "getEstimatedDepartureTime: " << parser.getEstimatedDepartureTime(i) << std::endl;
+       std::cout << "getPlatform: " << parser.getPlatform(i) << std::endl;
+       std::cout << "getDestination: " << parser.getDestination(i) << std::endl;
+       parser.setShowCallingPointETD(true);
+       std::cout << "getCallingPoints - ETD true: " << parser.getCallingPoints(i) << std::endl;
+       parser.setShowCallingPointETD(false);
+       std::cout << "getCallingPoints - ETD false: " << parser.getCallingPoints(i) << std::endl;
+       std::cout << "isDelayed: " << parser.isDelayed(i) << std::endl;
+       std::cout << "getDelayReason: " << parser.getDelayReason(i) << std::endl;
+       std::cout << "isCancelled: " << parser.isCancelled(i) << std::endl;
+       std::cout << "getCancelReason: " << parser.getCancelReason(i) << std::endl;
+       std::cout << "getOperator: " << parser.getOperator(i) << std::endl;
+       std::cout << "getCoaches (with message): " << parser.getCoaches(i, true) << std::endl;
+       std::cout << "getCoaches (without message): " << parser.getCoaches(i, false) << std::endl;
+       std::cout << "getadhocAlerts: " << parser.getadhocAlerts(i) << std::endl;
+       std::cout << "\n\n\n" << std::endl;
+    }
+
+    std::cout << "==========================================================" << std::endl;
+    std::cout << "=============== Network Rail messages ====================" << std::endl;
+    std::cout << "NRCC messages: " << parser.getNrccMessages() << std::endl;
+    std::cout << "==========================================================" << std::endl;
+    std::cout << "=========== Getting the first 3 departures ===============" << std::endl;
+
+    parser.findServices();
+
+    std::cout << "First three departures" << std::endl;
+    service = parser.getFirstDeparture();
+    std::cout << "First: Platform " << parser.getPlatform(service) << " at " << parser.getScheduledDepartureTime(service) << " to " << parser.getDestination(service) << std::endl;
+    service = parser.getSecondDeparture();
+    std::cout << "Second: Platform " << parser.getPlatform(service) << " at " << parser.getScheduledDepartureTime(service) << " to " << parser.getDestination(service) << std::endl;
+    service = parser.getThirdDeparture();
+    std::cout << "Third: Platform " << parser.getPlatform(service) << " at " << parser.getScheduledDepartureTime(service) << " to " << parser.getDestination(service) << std::endl;
+    
+
     if (!platform.empty()) {
-        std::cout << "Platform: " << platform << std::endl;
-    }
-    if (!clean_data.empty()) {
-        std::cout << "Clean data: " << clean_data << std::endl;
-    }
-    if (!config_file.empty()) {
-        std::cout << "Config file: " << config_file << std::endl;
-    }
-    if (!debug.empty()) {
-        std::cout << "Debug:: " << debug << " debug_mode: "<< debug_mode << std::endl;
-    } else {
-        std::cout << "debug_mode: "<< debug_mode << std::endl;
-    }
-    
-    std::cout << "------------------------------" << std::endl;
-
-    parser.updateData(data);
-
-   // Functions to test
-   //
-   // void setShowCallingPointETD(bool show);
-   // void updateData(const std::string& jsonString);
-   // void findServicesAtPlatform(const std::string& selectedPlatform);
-   // int returnServiceAtPlatform(int serviceNumber);
-   // bool isCancelled(size_t serviceIndex);
-   // size_t getNumberOfServices();
-   // std::string getScheduledDepartureTime(size_t serviceIndex);
-   // std::string getEstimatedDepartureTime(size_t serviceIndex);
-   // std::string getPlatform(size_t serviceIndex);
-   // std::string getDestinationLocation(size_t serviceIndex);
-   // std::string getLocationNameList(size_t serviceIndex);
-   // std::string getDelayReason(size_t serviceIndex);
-   // std::string getCancelReason(size_t serviceIndex);
-   // std::string getNrccMessages();
-  
-   num_services = parser.getNumberOfServices();
-   std::cout << "Number of Services: " << num_services << std::endl;;
-
-   for (i=0; i< num_services; i++) {
-      std::cout << "==========================================================" << std::endl;
-      std::cout << "serviceIndex: " << i << std::endl; 
-        
-        
-      std::cout << "getScheduledDepartureTime: " << parser.getScheduledDepartureTime(i) << std::endl;
-      std::cout << "getEstimatedDepartureTime: " << parser.getEstimatedDepartureTime(i) << std::endl;
-      std::cout << "getPlatform: " << parser.getPlatform(i) << std::endl;
-      std::cout << "getDestinationLocation: " << parser.getDestinationLocation(i) << std::endl;
-      parser.setShowCallingPointETD(true);
-      std::cout << "getLocationNameList - ETD true: " << parser.getLocationNameList(i) << std::endl;
-      parser.setShowCallingPointETD(false);
-      std::cout << "getLocationNameList - ETD false: " << parser.getLocationNameList(i) << std::endl;
-      std::cout << "getDelayReason: " << parser.getDelayReason(i) << std::endl;
-      std::cout << "isCancelled: " << parser.isCancelled(i) << std::endl;
-      std::cout << "getCancelReason: " << parser.getCancelReason(i) << std::endl;
-      std::cout << "getOperator: " << parser.getOperator(i) << std::endl;
-      std::cout << "getCoaches (with message): " << parser.getCoaches(i, true) << std::endl;
-      std::cout << "getCoaches (without message): " << parser.getCoaches(i, false) << std::endl;
-      std::cout << "getadhocAlerts: " << parser.getadhocAlerts(i) << std::endl;
-      std::cout << "\n\n\n" << std::endl;
-   }
-    
-
-   std::cout << "==========================================================" << std::endl;
-
-   if (!platform.empty()) {
-      std::cout << "Testing platform parsing" << std::endl;
-      std::cout << "Next three departures from platform " << platform << std::endl;
-      parser.findServicesAtPlatform(platform); 
-      for (i=1; i< 4; i++) {
-         departureNumber = static_cast<int>(parser.returnServiceAtPlatform(i)); 
-          if (departureNumber != -1) {
-              std::cout << "Service: " << i << " " << parser.getDestinationLocation(departureNumber) << " - " << parser.getScheduledDepartureTime(departureNumber) << std::endl;
-          }
-      }
-    } else {
-      std::cout << "Consider testing the logic to extract departures from a specified platform with the -platform option" << std::endl; 
-   }
-
-   std::cout << "==========================================================" << std::endl;
-   std::cout << "Network Rail messages" << std::endl;
-   std::cout << "NRCC messages: " << parser.getNrccMessages() << std::endl;
-
-    return 0;
-}
-
-
+        std::cout << "==========================================================" << std::endl;
+        std::cout << "=========== Testing platform parsing =====================" << std::endl;
+        std::cout << "======= First three departures from platform " << platform << " ===========" <<std::endl;
+        parser.setSelectedPlatform(platform);
+        parser.findServices();
+        std::cout << "First three departures" << std::endl;
+        service = parser.getFirstDeparture();
+        std::cout << "First: Platform " << parser.getPlatform(service) << " at " << parser.getScheduledDepartureTime(service) << " to " << parser.getDestination(service) << std::endl;
+        service = parser.getSecondDeparture();
+        std::cout << "Second: Platform " << parser.getPlatform(service) << " at " << parser.getScheduledDepartureTime(service) << " to " << parser.getDestination(service) << std::endl;
+        service = parser.getThirdDeparture();
+        std::cout << "Third: Platform " << parser.getPlatform(service) << " at " << parser.getScheduledDepartureTime(service) << " to " << parser.getDestination(service) << std::endl;
+        std::cout << "==========================================================" << std::endl;
+        std::cout << "============= Unsetting Platform Selection ===============" << std::endl;
+        std::cout << "=============== First three departures ===================" << std::endl;
+        parser.unsetSelectedPlatform();
+        parser.findServices();
+        std::cout << "First three departures" << std::endl;
+        service = parser.getFirstDeparture();
+        std::cout << "First: Platform " << parser.getPlatform(service) << " at " << parser.getScheduledDepartureTime(service) << " to " << parser.getDestination(service) << std::endl;
+        service = parser.getSecondDeparture();
+        std::cout << "Second: Platform " << parser.getPlatform(service) << " at " << parser.getScheduledDepartureTime(service) << " to " << parser.getDestination(service) << std::endl;
+        service = parser.getThirdDeparture();
+        std::cout << "Third: Platform " << parser.getPlatform(service) << " at " << parser.getScheduledDepartureTime(service) << " to " << parser.getDestination(service) << std::endl;
+       }
+     return 0;
+ }

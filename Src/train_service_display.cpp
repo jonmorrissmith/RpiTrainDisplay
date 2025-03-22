@@ -1,10 +1,10 @@
 // Train Display - an RGB matrix departure board for the Raspberry Pi
+// Display handler
 // Jon Morris Smith - Feb 2025
 // Version 1.0
 // Instructions, fixes and issues at https://github.com/jonmorrissmith/RGB_Matrix_Train_Departure_Board
 //
 // With thanks to:
-// https://github.com/jpsingleton/Huxley2
 // https://github.com/hzeller/rpi-rgb-led-matrix
 // https://github.com/nlohmann/json
 //
@@ -46,7 +46,7 @@ TrainServiceDisplay::TrainServiceDisplay(RGBMatrix* m, TrainServiceParser& p, Tr
 }
 
 void TrainServiceDisplay::updateDisplayContent() {
-    int departure;
+    size_t index;
 
     try {
         // Get the number of services
@@ -61,165 +61,92 @@ void TrainServiceDisplay::updateDisplayContent() {
             return;
         }
         
-        // Are we showing platforms? 
+        // Are we showing platforms?
         show_platforms = config.getBool("ShowPlatforms");
 
-        // Has a specific platform been selected?
-        selected_platform = config.get("platform");
-        platform_selected = !selected_platform.empty();
-        DEBUG_PRINT("Selected platform: " << selected_platform);
-        if (platform_selected) {
-                   parser.findServicesAtPlatform(selected_platform);
+        // Has a platform been selected?
+        if(!config.get("platform").empty()){
+            parser.setSelectedPlatform(config.get("platform"));
         }
 
-        if (platform_selected) {
-            // Platform selected
-            // display the next departure along with the 2nd and 3rd
-            // for the selected platform
-
-            // First departure from selected platform
-            departure = parser.returnServiceAtPlatform(1); 
-            if (departure >= 0) { 
-               DEBUG_PRINT("Top line. Index: " << departure << " "
-                        << parser.getScheduledDepartureTime(departure) << " " 
-                        << parser.getDestinationLocation(departure) << " " 
-                        << parser.getEstimatedDepartureTime(departure) << " "
-                        << parser.getOperator(departure)  << " "
-                        << parser.getCoaches(departure, true)  << " "
-                        << ". Cancelled flag: " << parser.isCancelled(departure));
-
-                top_line = parser.getScheduledDepartureTime(departure) + " ";
-                if (show_platforms) { 
-                          top_line = top_line + parser.getPlatform(departure) + " ";
-                }
-                top_line = top_line + parser.getDestinationLocation(departure) + " "; 
-                top_line = top_line + parser.getEstimatedDepartureTime(departure);
+        // Find Services
+        parser.findServices();
         
-                if (parser.isCancelled(departure)) {
-                    calling_points = parser.getCancelReason(departure);
-                } else {
-                    calling_points = parser.getLocationNameList(departure) + parser.getOperator(departure) + parser.getCoaches(departure, true);
-                }
-
-                // Get delay reason if the first train is delayed
-                std::string delay_reason = parser.getDelayReason(departure);
-                if (!delay_reason.empty()) {
-                    calling_points += " - " + delay_reason;
-                }
-             }
-
-             // Second departure from selected platform
-            departure = parser.returnServiceAtPlatform(2); 
-            if (departure >= 0 ) {
-
-               DEBUG_PRINT("Second line. Index: " << departure << " "
-                        << parser.getScheduledDepartureTime(departure) << " "
-                        << parser.getDestinationLocation(departure) << " "
-                        << parser.getEstimatedDepartureTime(departure) << " "
-                        << ". Cancelled flag: " << parser.isCancelled(departure));
-
-                second_line ="2nd " + parser.getScheduledDepartureTime(departure) + " ";
-                if (show_platforms) {
-                      second_line = second_line + parser.getPlatform(departure) + " ";
-                }
-                second_line = second_line + parser.getDestinationLocation(departure) + " ";
-                second_line = second_line + parser.getEstimatedDepartureTime(departure);
-            } 
-            else {
-                second_line = "No more services";
-            }
-       
-
-            // Third departure from selected platformA
-            departure = parser.returnServiceAtPlatform(3);
-            if (departure >= 0 ) {
-               DEBUG_PRINT("Third line. Index: " << departure << " "
-                        << parser.getScheduledDepartureTime(departure) << " "
-                        << parser.getDestinationLocation(departure) << " "
-                        << parser.getEstimatedDepartureTime(departure) << " "
-                        << ". Cancelled flag: " << parser.isCancelled(departure)); 
-
-                third_line ="3rd " + parser.getScheduledDepartureTime(departure) + " ";
-                if (show_platforms) {
-                      third_line = third_line + parser.getPlatform(departure) + " ";
-                }
-                third_line = third_line + parser.getDestinationLocation(departure) + " ";
-                third_line = third_line + parser.getEstimatedDepartureTime(departure);
-            }
-            else {
-                third_line = "No more services";
-            } 
+        // Create the Top Line
+        index = parser.getFirstDeparture();
+        if(index == 999) {
+            top_line = "No more services";
         } else {
-            // Platform not selected
-            // Display the next departure along with the 2nd and 3rd for all platforms
-            DEBUG_PRINT("Top line. Index: 0 " << " "
-                     << parser.getScheduledDepartureTime(0) << " "
-                     << parser.getDestinationLocation(0) << " "
-                     << parser.getEstimatedDepartureTime(0) << " "
-                     << parser.getOperator(0) << " "
-                     << parser.getCoaches(0, true) << " "
-                     << ". Cancelled flag: " << parser.isCancelled(0));
+            DEBUG_PRINT("Top line. Index: " << index << " "
+                        << parser.getScheduledDepartureTime(index) << " "
+                        << parser.getDestination(index) << " "
+                        << parser.getEstimatedDepartureTime(index) << " "
+                        << parser.getOperator(index) << " "
+                        << parser.getCoaches(index, true) << " "
+                        << ". Cancelled flag: " << parser.isCancelled(index));
 
-            top_line = parser.getScheduledDepartureTime(0) + " ";
+            top_line = parser.getScheduledDepartureTime(index) + " ";
+            // Show the platform if selected
             if (show_platforms) {
-                      top_line = top_line + parser.getPlatform(0) + " ";
+                top_line = top_line + parser.getPlatform(index) + " ";
             }
-            top_line = top_line + parser.getDestinationLocation(0) + " ";
-            top_line = top_line + parser.getEstimatedDepartureTime(0);
+            top_line = top_line + parser.getDestination(index) + " ";
+            top_line = top_line + parser.getEstimatedDepartureTime(index);
 
-            if (parser.isCancelled(0)) {
-                calling_points = parser.getCancelReason(0);
-                DEBUG_PRINT("Cancellation reason: " << parser.getCancelReason(0));
+            if (parser.isCancelled(index)) {
+                calling_points = parser.getCancelReason(index);
+                DEBUG_PRINT("Cancellation reason: " << parser.getCancelReason(index));
             } else {
-                calling_points = parser.getLocationNameList(0) + parser.getOperator(0) + parser.getCoaches(0, true);
+                calling_points = parser.getCallingPoints(index) + parser.getOperator(index) + parser.getCoaches(index, true);
             }
 
             // Get delay reason if the first train is delayed
-            std::string delay_reason = parser.getDelayReason(0);
+            std::string delay_reason = parser.getDelayReason(index);
             if (!delay_reason.empty()) {
                 calling_points += " - " + delay_reason;
             }
+        }
 
-             if (num_services > 1 ) {
-                DEBUG_PRINT("2nd line. Index: 1 " << " "
-                         << parser.getScheduledDepartureTime(1) << " "
-                         << parser.getDestinationLocation(1) << " "
-                         << parser.getEstimatedDepartureTime(1) << " "
-                         << parser.getOperator(1) << " "
-                         << parser.getCoaches(1, true) << " "
-                         << ". Cancelled flag: " << parser.isCancelled(1));
+        // Create the Second Line
+        index = parser.getSecondDeparture();
+        if(index == 999) {
+            second_line = "No more services";
+        } else {
+            DEBUG_PRINT("Second line. Index: " << index << " "
+                        << parser.getScheduledDepartureTime(index) << " "
+                        << parser.getDestination(index) << " "
+                        << parser.getEstimatedDepartureTime(index) << " "
+                        << parser.getOperator(index) << " "
+                        << parser.getCoaches(index, true) << " "
+                        << ". Cancelled flag: " << parser.isCancelled(index));
 
-                second_line ="2nd " + parser.getScheduledDepartureTime(1) + " ";
-                if (show_platforms) {
-                      second_line = second_line + parser.getPlatform(1) + " ";
-                }
-                second_line = second_line + parser.getDestinationLocation(1) + " ";
-                second_line = second_line + parser.getEstimatedDepartureTime(1);
+            second_line ="2nd " + parser.getScheduledDepartureTime(index) + " ";
+            if (show_platforms) {
+                second_line = second_line + parser.getPlatform(index) + " ";
             }
-            else {
-                second_line = "No more services";
-            }
+            second_line = second_line + parser.getDestination(index) + " ";
+            second_line = second_line + parser.getEstimatedDepartureTime(index);
+        }
 
+        // Create the Third Line
+        index = parser.getThirdDeparture();
+        if(index == 999) {
+            second_line = "No more services";
+        } else {
+            DEBUG_PRINT("Third line. Index: " << index << " "
+                        << parser.getScheduledDepartureTime(index) << " "
+                        << parser.getDestination(index) << " "
+                        << parser.getEstimatedDepartureTime(index) << " "
+                        << parser.getOperator(index) << " "
+                        << parser.getCoaches(index, true) << " "
+                        << ". Cancelled flag: " << parser.isCancelled(index));
 
-            if (num_services > 2 ) {
-                DEBUG_PRINT("3rd line. Index: 2 " << " "
-                         << parser.getScheduledDepartureTime(2) << " "
-                         << parser.getDestinationLocation(2) << " "
-                         << parser.getEstimatedDepartureTime(2) << " "
-                         << parser.getOperator(2) << " "
-                         << parser.getCoaches(2, true) << " "
-                         << ". Cancelled flag: " << parser.isCancelled(2));
-
-                third_line ="3rd " + parser.getScheduledDepartureTime(2) + " ";
-                if (show_platforms) {
-                      third_line = third_line + parser.getPlatform(2) + " ";
-                }
-                third_line = third_line + parser.getDestinationLocation(2) + " ";
-                third_line = third_line + parser.getEstimatedDepartureTime(2);
+            third_line ="3rd " + parser.getScheduledDepartureTime(index) + " ";
+            if (show_platforms) {
+                third_line = third_line + parser.getPlatform(index) + " ";
             }
-            else {
-                third_line = "No more services";
-            }
+            third_line = third_line + parser.getDestination(index) + " ";
+            third_line = third_line + parser.getEstimatedDepartureTime(index);
         }
         
         // Check if messages should be shown according to config
@@ -498,4 +425,3 @@ void TrainServiceDisplay::run() {
 void TrainServiceDisplay::stop() {
     running = false;
 }
-
