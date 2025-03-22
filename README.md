@@ -117,7 +117,7 @@ To get you started I've provided a very basic solution to 3D print joiners.
 
 You can set the key parameters to create a joiner specific to your panels.
 
-More detail in the Joiner Directory.
+More detail in the [Joiner Directory](https://github.com/jonmorrissmith/RGB_Matrix_Train_Departure_Board/blob/main/Joiner/Readme.md)
 
 # Setting up the Raspberry Pi #
 
