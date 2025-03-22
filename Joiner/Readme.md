@@ -41,7 +41,8 @@ Now install the SolidPython library
 ```
 pip install solidpython
 ```
-## Options available
+# Creating the Joiners
+## Using SolidPython
 
 There are 4 options
 * **Bolt Size** - the 'M' size of the bolt-holes on your LED panel
@@ -51,7 +52,7 @@ There are 4 options
 
 Options set using these options:
 ```
-python ./joiner_generator.py --help
+python ./joiner_generator_SolidPython.py --help
 usage: joiner_generator.py [-h] -m BOLT_SIZE -s SEPARATION -d DEPTH -r RADIUS
 
 Generate an STL file for a bolt mount
@@ -70,7 +71,7 @@ options:
 
 For the panels I used (see the main README) I selected the following options.  
 ```
-python ./joiner_generator.py -m 3 -s 16 -d 5 -r 10
+python ./joiner_generator_SolidPython.py -m 3 -s 16 -d 5 -r 10
 ```
 This is the output you should see
 ```
@@ -106,6 +107,18 @@ Just type
 ```
 deactivate
 ```
+## Using OpenSCAD
+
+This option automatically finds OpenSCAD on your system.
+
+If OpenSCAD isn't found, it saves the SCAD file and provides instructions
+
+Same options - just a different script.
+```
+python ./joiner_generator_OpenSCAD.py -m 3 -s 16 -d 5 -r 10
+```
+My preference is the SolidPython method - this way might fix any issues you encounter.
+
 # Print the Joiner
 
 Load the STL file into your favourite slicer and away you go!
