@@ -1,14 +1,9 @@
-// Train Display - an RGB matrix departure board for the Raspberry Pi
+// Train Display - Configuration handler
 // Jon Morris Smith - Feb 2025
 // Version 1.0
 // Instructions, fixes and issues at https://github.com/jonmorrissmith/RGB_Matrix_Train_Departure_Board
 //
-// IMPORTANT - replace XXX with your default settings
-//
-// With thanks to:
-// https://github.com/jpsingleton/Huxley2
-// https://github.com/hzeller/rpi-rgb-led-matrix
-// https://github.com/nlohmann/json
+// IMPORTANT - set defaults in config.h
 //
 
 #include "config.h"

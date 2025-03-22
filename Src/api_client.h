@@ -1,12 +1,8 @@
-// Train Display - an RGB matrix departure board for the Raspberry Pi
+// Train Display API Client
 // Jon Morris Smith - Feb 2025
 // Version 1.0
 // Instructions, fixes and issues at https://github.com/jonmorrissmith/RGB_Matrix_Train_Departure_Board
 //
-// With thanks to:
-// https://github.com/jpsingleton/Huxley2
-// https://github.com/hzeller/rpi-rgb-led-matrix
-// https://github.com/nlohmann/json
 //
 #ifndef API_CLIENT_H
 #define API_CLIENT_H
