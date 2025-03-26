@@ -84,7 +84,10 @@ std::string TrainAPIClient::fetchDepartures(const std::string& from, const std::
     if(!base_url_key.empty()) {
         api_header = "x-apikey:" + base_url_key;
         headers = curl_slist_append(headers, api_header.c_str());
-        DEBUG_PRINT("API header: " << api_header.c_str());
+
+        // *WARNING* uncommenting the next line means your API key is included in log/debug info.
+        //DEBUG_PRINT("API header: " << api_header.c_str());
+
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     }
 

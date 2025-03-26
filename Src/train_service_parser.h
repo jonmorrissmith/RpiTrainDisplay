@@ -20,6 +20,9 @@
 #include <array>
 #include <iostream>
 #include <iomanip>
+#include <chrono>
+#include <atomic>
+#include <ctime>
 
 using json = nlohmann::json;
 
@@ -30,14 +33,15 @@ extern bool debug_mode;
 
 class TrainServiceParser {
 private:
-    json data;                             // Departure data
-    std::mutex dataMutex;                  // Process control
+    json data;                                  // Departure data
+    std::mutex dataMutex;                       // Process control
 
-    bool showCallingPointETD;              // Flag to show Estimated Time of Departure in calling points
-    bool selectPlatform;                   // Flag to indicate whether departures for a specific platform are selected
+    bool showCallingPointETD;                   // Flag to show Estimated Time of Departure in calling points
+    bool selectPlatform;                        // Flag to indicate whether departures for a specific platform are selected
 
-    std::string selected_platform;         // Store the selected platform
-    std::array<size_t, 3> ServiceList;     // Array for the 1st, 2nd and 3rd departures
+    std::string selected_platform;              // Store the selected platform
+    std::array<size_t, 3> ServiceList;          // Array for the 1st, 2nd and 3rd departures
+    std::array<size_t, 10> ETDOrderedList;      // Array of Service Indices in ETD order
 
     std::string processHtmlTags(const std::string& html);     // Helper method to strip HTML tags from text
 
@@ -48,6 +52,7 @@ public:
     void setSelectedPlatform(const std::string& platform);    // Set a specific platform - departures will be found for that platform
     void unsetSelectedPlatform();                             // Unset the selected platform - departures will be found for all platforms
     void updateData(const std::string& jsonString);           // Update with new JSON data
+    void createOrderedDepartureList();                        // Create an array of indices in order of departure time (STD and ETD - whichever is later)
     
     void findServices();                                      // Find the next 3 services - takes into account whether a specific platform has been set
 
@@ -59,19 +64,21 @@ public:
     size_t getSecondDeparture();                              // Return the index for the second departure
     size_t getThirdDeparture();                               // Return the index for the third departure
 
-    std::string getScheduledDepartureTime(size_t serviceIndex);  //Return the scheduled departure time for the selected service
-    std::string getEstimatedDepartureTime(size_t serviceIndex);  //Return the estimated departure time for the selected service
-    std::string getPlatform(size_t serviceIndex);                //Return the platform for the selected service
-    std::string getDestination(size_t serviceIndex);             //Return the destination for the selected service
-    std::string getCallingPoints(size_t serviceIndex);           //Return the calling points for the selected service
-    std::string getCoaches(size_t serviceIndex, bool addText);   //Return the number of coaches for the selected service - if addText is true then return in the "Formed of x coaches" format
-    std::string getOperator(size_t serviceIndex);                //Return the operator of the selected service
-    std::string getNrccMessages();                               //Return any Network Rail messages
+    std::string getScheduledDepartureTime(size_t serviceIndex);  // Return the scheduled departure time for the selected service
+    std::string getEstimatedDepartureTime(size_t serviceIndex);  // Return the estimated departure time for the selected service
+    std::string getPlatform(size_t serviceIndex);                // Return the platform for the selected service
+    std::string getDestination(size_t serviceIndex);             // Return the destination for the selected service
+    std::string getCallingPoints(size_t serviceIndex);           // Return the calling points for the selected service
+    std::string getCoaches(size_t serviceIndex, bool addText);   // Return the number of coaches for the selected service - if addText is true then return in the "Formed of x coaches" format
+    std::string getOperator(size_t serviceIndex);                // Return the operator of the selected service
+    std::string getNrccMessages();                               // Return any Network Rail messages
+    std::string getLocationName();                               // Return the name of the location for the departure data
     
-    std::string getDelayReason(size_t serviceIndex);  //Return the delay reason for the selected service
-    std::string getCancelReason(size_t serviceIndex); //Return the cancellation reason time for the selected service
-    std::string getadhocAlerts(size_t serviceIndex);  //Return any adhoc alerts for the selected service
+    std::string getDelayReason(size_t serviceIndex);  // Return the delay reason for the selected service
+    std::string getCancelReason(size_t serviceIndex); // Return the cancellation reason time for the selected service
+    std::string getadhocAlerts(size_t serviceIndex);  // Return any adhoc alerts for the selected service
 };
 
 #endif // TRAIN_SERVICE_PARSER_H
+
 

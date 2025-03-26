@@ -29,6 +29,7 @@ private:
     const std::map<std::string, std::string> defaults = {
         {"from", ""},
         {"to", ""},
+        {"ShowLocation", ""},
         {"APIURL", ""},
         {"APIkey", ""},
         {"Rail_Data_Marketplace", ""},
@@ -47,6 +48,7 @@ private:
         {"third_line_y", "58"},
         {"fourth_line_y", "72"},
         {"third_line_refresh_seconds", "10"},
+        {"ETD_coach_refresh_seconds", "3"},
         {"ShowCallingPointETD", "Yes"},
         {"ShowMessages", "Yes"},
         {"ShowPlatforms", "Yes"},
@@ -98,4 +100,5 @@ public:
 };
 
 #endif // CONFIG_H
+
 
