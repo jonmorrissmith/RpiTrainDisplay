@@ -11,6 +11,7 @@ platform=
 ShowCallingPointETD=Yes
 ShowMessages=Yes
 ShowPlatforms=Yes
+ShowLocation=Yes
 
 # API Configuration
 APIURL=
@@ -25,6 +26,7 @@ scroll_slowdown_sleep_ms=15
 refresh_interval_seconds=60
 third_line_refresh_seconds=10
 Message_Refresh_interval=20
+ETD_coach_refresh_seconds=4
 
 # Matrix hardware configuration
 matrixcols=128

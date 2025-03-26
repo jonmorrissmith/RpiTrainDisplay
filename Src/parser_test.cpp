@@ -266,5 +266,11 @@ int main(int argc, char* argv[]) {
         service = parser.getThirdDeparture();
         std::cout << "Third: Platform " << parser.getPlatform(service) << " at " << parser.getScheduledDepartureTime(service) << " to " << parser.getDestination(service) << std::endl;
        }
+    
+    std::cout << "==========================================================" << std::endl;
+    std::cout << "====================== Location ==========================" << std::endl;
+    std::cout << parser.getLocationName() << std::endl << std::endl;
+    
      return 0;
  }
+

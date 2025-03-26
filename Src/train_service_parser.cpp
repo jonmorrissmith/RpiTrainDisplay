@@ -60,9 +60,131 @@ size_t TrainServiceParser::getNumberOfServices() {
     }
 }
 
+void TrainServiceParser::createOrderedDepartureList() {
+    std::array<std::time_t, 10> time_list;
+    std::string platform;
+    
+    try {
+        // Get the number of train services (might be less than 10)
+        size_t num_services = data["trainServices"].size();
+        
+        // Get current time to use for date information
+        std::time_t now = std::time(nullptr);
+        std::tm *now_tm = std::localtime(&now);
+        
+        // Fill time_list with departure times
+        for (size_t i = 0; i < num_services; i++) {
+            std::tm departure_time = *now_tm; // Start with today's date
+            std::string time_str;
+            
+            // Parse the scheduled time
+            time_str = data["trainServices"][i]["std"].get<std::string>();
+            int hours, minutes;
+            if (sscanf(time_str.c_str(), "%d:%d", &hours, &minutes) == 2) {
+                departure_time.tm_hour = hours;
+                departure_time.tm_min = minutes;
+                departure_time.tm_sec = 0; // Reset seconds
+            }
+            
+            std::time_t td_time = mktime(&departure_time);
+            
+            // Check if there's an estimated time and use it if it's not "On Time" or "Cancelled"
+            std::string etd;
+            if (data["trainServices"][i]["etd"].is_null()) {
+                etd = "null";
+            } else {
+                etd = data["trainServices"][i]["etd"].get<std::string>();
+            }
+            
+            if (!(etd == "On Time" || etd == "On time" || etd == "Cancelled" || etd == "null")) {
+                // It's an actual time, parse it
+                departure_time = *now_tm; // Reset with today's date
+                if (sscanf(etd.c_str(), "%d:%d", &hours, &minutes) == 2) {
+                    departure_time.tm_hour = hours;
+                    departure_time.tm_min = minutes;
+                    departure_time.tm_sec = 0; // Reset seconds
+                    td_time = mktime(&departure_time);
+                }
+            }
+            
+            time_list[i] = td_time;
+        }
+        
+        // Uncomment this next block to see the unsorted departure times, calculated using 'latest of etd and std', in debug info
+/*      if (debug_mode) {
+            DEBUG_PRINT("----- list of departure times -----");
+            for (size_t i = 0; i < num_services; i++) {
+                // Format time as HH:MM for easier reading
+                std::tm* tm_time = localtime(&time_list[i]);
+                char buffer[10];
+                strftime(buffer, sizeof(buffer), "%H:%M", tm_time);
+                
+                if(!data["trainServices"][i]["platform"].is_null()) {
+                    platform = data["trainServices"][i]["platform"].get<std::string>();
+                }
+                
+                DEBUG_PRINT("Element " << i << " of time_list array. Platform " << platform << " Departure time " << buffer <<
+                            " std: " << data["trainServices"][i]["std"].get<std::string>() <<
+                            " etd: " << data["trainServices"][i]["etd"].get<std::string>());
+            }
+            if (num_services == 0) {
+                DEBUG_PRINT("No train services available");
+            }
+        }
+*/
+        
+        // Initialize ETDOrderedList for actual number of services
+        for (size_t i = 0; i < num_services; i++) {
+            ETDOrderedList[i] = i;
+        }
+        
+        // Fill the rest with invalid indices if num_services < 10
+        for (size_t i = num_services; i < 10; i++) {
+            ETDOrderedList[i] = 999; // Use 999 as an invalid index
+        }
+        
+        // Sort only the valid indices based on time values (from earliest to latest)
+        if (num_services > 0) {
+            std::sort(ETDOrderedList.begin(), ETDOrderedList.begin() + num_services,
+                      [&time_list](size_t a, size_t b) {
+                return time_list[a] < time_list[b];
+            });
+        }
+        
+        // Debug output for only valid services
+        if (debug_mode) {
+            DEBUG_PRINT("----- Indices of departures in time order -----");
+            for (size_t i = 0; i < num_services; i++) {
+                size_t idx = ETDOrderedList[i];
+                // Format time as HH:MM
+                std::tm* tm_time = localtime(&time_list[idx]);
+                char buffer[10];
+                strftime(buffer, sizeof(buffer), "%H:%M", tm_time);
+                
+                if(!data["trainServices"][i]["platform"].is_null()) {
+                    platform = data["trainServices"][i]["platform"].get<std::string>();
+                }
+                
+                DEBUG_PRINT("Position: " << i << " Index: " << idx << " Platform: " << platform <<
+                           " Time: " << buffer <<
+                           " std: " << data["trainServices"][idx]["std"].get<std::string>() <<
+                           " etd: " << data["trainServices"][idx]["etd"].get<std::string>());
+            }
+            if (num_services == 0) {
+                DEBUG_PRINT("No train services available");
+            }
+        DEBUG_PRINT("----- Indices of departures in time order -----");
+        }
+    } catch (const json::exception& e) {
+        throw std::runtime_error("Error creating ordered list of departure times: " + std::string(e.what()));
+    }
+}
+
+
 void TrainServiceParser::findServices() {
     std::lock_guard<std::mutex> lock(dataMutex);
     size_t i;
+    size_t index;
     size_t numServices;
     
     try {
@@ -80,6 +202,9 @@ void TrainServiceParser::findServices() {
         // Clear saved services
         ServiceList.fill(999);
         
+        // Get ordered list of departures
+        createOrderedDepartureList();
+        
         if (selectPlatform) {
             // Find departures for the selected platform
             size_t serviceCount = 0;
@@ -88,7 +213,8 @@ void TrainServiceParser::findServices() {
             
             // Iterate through all train services
             for (i = 0; i < numServices && serviceCount < ServiceList.size(); ++i) {
-                const auto& service = data["trainServices"][i];
+                index = ETDOrderedList[i];
+                const auto& service = data["trainServices"][index];
                 
                 // First check if the platform field exists
                 if (service.contains("platform")) {
@@ -98,8 +224,8 @@ void TrainServiceParser::findServices() {
                         service["platform"].get<std::string>() == selected_platform) {
 
                         // Found a service for the selected platform, add its index to the array
-                        // DEBUG_PRINT("Found service for platform " << selected_platform << " at position " << i);
-                        ServiceList[serviceCount] = i;
+                        // DEBUG_PRINT("Found service for platform " << selected_platform << " at position " << index);
+                        ServiceList[serviceCount] = index;
 
                         // Increment the count of services found
                         ++serviceCount;
@@ -113,7 +239,7 @@ void TrainServiceParser::findServices() {
             // Find the first 3 departures
             for (i = 0; i < 3; i++) {
                 if (i < numServices) {
-                    ServiceList[i] = i;
+                    ServiceList[i] = ETDOrderedList[i];
                 }
             }
         }
@@ -475,13 +601,14 @@ std::string TrainServiceParser::getNrccMessages() {
                 
                 // Process HTML tags
                 message = processHtmlTags(message);
+                // Remove any /n from the beginning of the message
+                c = message[0];
+                if (int(c) == 10) {
+                    message.erase(0,1);
+                }
                 ss << message;
             }
             output = ss.str();
-            c = output[0];
-            if (int(c)=10) {
-                output.erase(0,1);
-            }
             return output;
         }
         return "";
@@ -490,4 +617,24 @@ std::string TrainServiceParser::getNrccMessages() {
         return "";
     }
 }
+
+std::string TrainServiceParser::getLocationName(){
+    std::lock_guard<std::mutex> lock(dataMutex);
+    
+    try {
+        if (data.find("locationName") != data.end() &&
+            !data["locationName"].is_null() &&
+            !data["locationName"].empty()) {
+            
+            return data["locationName"];
+            
+        }
+        return "";
+    } catch (const json::exception& e) {
+        DEBUG_PRINT("Error getting Location: " << e.what());
+        return "";
+    }
+    
+}
+
 

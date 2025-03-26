@@ -22,7 +22,7 @@ TrainServiceDisplay::TrainServiceDisplay(RGBMatrix* m, TrainServiceParser& p, Tr
       matrix_width(m->width()),
       calling_points_width(0), message_width(0),
       scroll_x_calling_points(matrix_width), scroll_x_message(matrix_width),
-      third_row_state(SECOND_TRAIN), fourth_row_state(CLOCK), message_scroll_complete(false) {
+      first_row_state(ETD), third_row_state(SECOND_TRAIN), fourth_row_state(CLOCK), message_scroll_complete(false) {
 
     if (!font.LoadFont(config.get("fontPath").c_str())) {
         throw std::runtime_error("Font loading failed for: " + config.get("fontPath"));
@@ -64,6 +64,9 @@ void TrainServiceDisplay::updateDisplayContent() {
         // Are we showing platforms?
         show_platforms = config.getBool("ShowPlatforms");
 
+        // Are we showing location?
+        show_location = config.getBool("ShowLocation");
+
         // Has a platform been selected?
         if(!config.get("platform").empty()){
             parser.setSelectedPlatform(config.get("platform"));
@@ -71,6 +74,9 @@ void TrainServiceDisplay::updateDisplayContent() {
 
         // Find Services
         parser.findServices();
+        
+        // Get location name
+        location_name = parser.getLocationName();
         
         // Create the Top Line
         index = parser.getFirstDeparture();
@@ -91,7 +97,7 @@ void TrainServiceDisplay::updateDisplayContent() {
                 top_line = top_line + parser.getPlatform(index) + " ";
             }
             top_line = top_line + parser.getDestination(index) + " ";
-            top_line = top_line + parser.getEstimatedDepartureTime(index);
+            // top_line = top_line + parser.getEstimatedDepartureTime(index);
 
             if (parser.isCancelled(index)) {
                 calling_points = parser.getCancelReason(index);
@@ -217,10 +223,29 @@ int TrainServiceDisplay::calculateTextWidth(const std::string& text) {
 
 void TrainServiceDisplay::renderFrame() {
     canvas->Clear();
-
+    
     // Draw static top line
     rgb_matrix::DrawText(canvas, font, 0, first_line_y, white, top_line.c_str());
-
+    
+    // Draw right-justified ETD or Coach configuration on top line
+    // Create the text
+    size_t first_departure = parser.getFirstDeparture();
+    std::string first_ETD = parser.getEstimatedDepartureTime(first_departure);
+    std::string first_coaches = parser.getCoaches(first_departure, false);
+    if(first_coaches.empty()) {
+        first_coaches = first_ETD;
+    } else {
+        first_coaches = first_coaches + " coaches";
+    }
+    std::string ETD_coaches = (first_row_state == ETD) ? first_ETD : first_coaches;
+    
+    // Right-justify ETD/Coach
+    int coach_etd_width = calculateTextWidth(ETD_coaches);
+    int coach_etd_position = (matrix_width - coach_etd_width);
+    
+    // Draw ETD/Coach
+    rgb_matrix::DrawText(canvas, font, coach_etd_position, first_line_y, white, ETD_coaches.c_str());    
+    
     // Draw scrolling calling points with wrap-around
     renderScrollingText(calling_points, scroll_x_calling_points, calling_points_width, second_line_y);
 
@@ -232,13 +257,22 @@ void TrainServiceDisplay::renderFrame() {
     if (fourth_row_state == CLOCK || !has_message) {
         // Update clock display
         updateClockDisplay();
+        int x_position;
+        
+        // Draw the centred Location Name if selected
+        if (show_location) {
+            int location_width = calculateTextWidth(location_name);
+            x_position = (matrix_width - location_width)/2;
+            rgb_matrix::DrawText(canvas, font, x_position, fourth_line_y, white, location_name.c_str());
+        }
         
         // Right-Justify the clock text
         int clock_width = calculateTextWidth(clock_display);
-        int x_position = (matrix_width - clock_width);
+        x_position = (matrix_width - clock_width);
         
         // Draw the right-justified clock
         rgb_matrix::DrawText(canvas, font, x_position, fourth_line_y, white, clock_display.c_str());
+        
     } else if (fourth_row_state == MESSAGE && has_message) {
         // Draw scrolling message (the clock will be drawn inside renderScrollingText)
         renderScrollingText(nrcc_message, scroll_x_message, message_width, fourth_line_y);
@@ -317,6 +351,17 @@ void TrainServiceDisplay::updateMessageScroll() {
     }
 }
 
+void TrainServiceDisplay::checkFirstRowStateTransition(){
+    auto now = std::chrono::steady_clock::now();
+    
+    // For ETD/Coach, toggle based on timer
+    if (now - last_first_row_toggle >= std::chrono::seconds(config.getInt("ETD_coach_refresh_seconds"))) {
+        transitionFirstRowState();
+        last_first_row_toggle = now;
+    }
+}
+
+
 void TrainServiceDisplay::checkThirdRowStateTransition() {
     auto now = std::chrono::steady_clock::now();
     
@@ -354,6 +399,11 @@ void TrainServiceDisplay::checkFourthRowStateTransition() {
         transitionFourthRowState();
         last_fourth_row_toggle = now;
     }
+}
+
+void TrainServiceDisplay::transitionFirstRowState() {
+    // Simply toggle between ETD and Number of Coaches
+    first_row_state = (first_row_state == COACHES ? ETD : COACHES);
 }
 
 void TrainServiceDisplay::transitionThirdRowState() {
@@ -401,6 +451,7 @@ void TrainServiceDisplay::run() {
             }
             
             // Check for state transitions
+            checkFirstRowStateTransition();
             checkThirdRowStateTransition();
             checkFourthRowStateTransition();
             
@@ -425,3 +476,4 @@ void TrainServiceDisplay::run() {
 void TrainServiceDisplay::stop() {
     running = false;
 }
+

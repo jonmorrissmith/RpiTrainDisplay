@@ -121,12 +121,36 @@ void processCommandLineArgs(int argc, char* argv[], Config& config) {
     }
 
     // Debug output of key configuration values
-    DEBUG_PRINT("Final configuration:");
+    DEBUG_PRINT("Using configuration:");
     DEBUG_PRINT("From: " << config.get("from"));
     DEBUG_PRINT("To: " << config.get("to"));
+    DEBUG_PRINT("Selected Platform: " << config.get("platform"));
     DEBUG_PRINT("Show Calling Point ETD: " << config.getBool("ShowCallingPointETD"));
     DEBUG_PRINT("Show Messages: " << config.getBool("ShowMessages"));
     DEBUG_PRINT("Show Platforms: " << config.getBool("ShowPlatforms"));
+    DEBUG_PRINT("Show Location: " << config.getBool("ShowLocation"));
+    DEBUG_PRINT("Scroll slowdown (ms): " << config.get("scroll_slowdown_sleep_ms"));
+    DEBUG_PRINT("API URL: " << config.get("APIURL"));
+    DEBUG_PRINT("Use Raildata Marketplace (if yes/1 this will over-ride the API URL): " << config.getBool("Rail_Data_Marketplace"));
+    DEBUG_PRINT("Font Path: " << config.get("fontPath"));
+    DEBUG_PRINT("Data refresh interval (s): " << config.get("refresh_interval_seconds"));
+    DEBUG_PRINT("Message display interval (s): " << config.get("Message_Refresh_interval"));
+    DEBUG_PRINT("2nd/3rd departure toggle interval (s): " << config.get("third_line_refresh_seconds"));
+    DEBUG_PRINT("Coach/ETD displayh interval (s): " << config.get("ETD_coach_refresh_seconds"));
+
+    DEBUG_PRINT("Display Configuration: ");
+    DEBUG_PRINT("Matrix columns: " << config.get("matrixcols"));
+    DEBUG_PRINT("Matrix rows: " << config.get("matrixrows"));
+    DEBUG_PRINT("Matrix panels (chain): " << config.get("matrixchain_length"));
+    DEBUG_PRINT("Matirx rows (in parallel): " << config.get("matrixparallel"));
+    DEBUG_PRINT("Matrix hardware adapter: " << config.get("matrixhardware_mapping"));
+    DEBUG_PRINT("GPIO slowdown: " << config.get("gpio_slowdown"));
+    DEBUG_PRINT("First Line pixels from top of display: " << config.get("first_line_y"));
+    DEBUG_PRINT("Second Line pixels from top of display: " << config.get("second_line_y"));
+    DEBUG_PRINT("Third Line pixels from top of display: " << config.get("third_line_y"));
+    DEBUG_PRINT("Fourth Line pixels from top of display: " << config.get("fourth_line_y"));
+
+    DEBUG_PRINT("Starting display... ");
 }
 
 int main(int argc, char* argv[]) {
@@ -162,7 +186,7 @@ int main(int argc, char* argv[]) {
         
         TrainServiceParser parser;
         parser.updateData(api_data);
-        
+        DEBUG_PRINT("API initialised"); 
         // Create and run the display
         TrainServiceDisplay display(matrix, parser, apiClient, config);
         display_ptr = &display; // Set global pointer for signal handler

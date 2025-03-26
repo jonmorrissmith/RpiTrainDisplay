@@ -49,6 +49,7 @@ private:
     const Config& config;         // Traindisplay configuration object
     
     // Display state
+    enum FirstRowState { ETD, COACHES };               // Toggle to show the Estimated Time of Departure or Coaches on the 1st line
     enum ThirdRowState { SECOND_TRAIN, THIRD_TRAIN };  // Toggle to show 2nd or 3rd train on the 3rd line
     enum FourthRowState { CLOCK, MESSAGE };            // Toggle to show the Clock alone or the Clock and message on the 4th line
     
@@ -60,9 +61,11 @@ private:
     std::string third_line;            // Toggle between 2nd and 3rd departure
     std::string clock_display;         // The clock
     std::string nrcc_message;          // Network Rail messages
+    std::string location_name;         // Location name for the departure board
 
     bool show_platforms;               // Yes/No - show platforms
-    bool platform_selected;            // Yes/No - has a specific platcorm been selected
+    bool show_location;                // Yes/No - show location
+    bool platform_selected;            // Yes/No - has a specific platform been selected
     std::string selected_platform;     // The selected platform
     bool has_message;                  // Yes/No - are there messages
     bool show_messages;                // Yes/No - are messages being shown
@@ -84,9 +87,11 @@ private:
     int scroll_x_calling_points;
     int scroll_x_message;
     
-    // State - for toggle on the 3rd and 4th row
+    // State - for toggle on the 1st, 3rd and 4th row and API refresh interval
+    FirstRowState first_row_state;
     ThirdRowState third_row_state;
     FourthRowState fourth_row_state;
+    std::chrono::steady_clock::time_point last_first_row_toggle;
     std::chrono::steady_clock::time_point last_third_row_toggle;
     std::chrono::steady_clock::time_point last_fourth_row_toggle;
     std::chrono::steady_clock::time_point last_refresh;
@@ -100,8 +105,10 @@ private:
     void updateScrollPositions();
     void updateMessageScroll();
 
+    void checkFirstRowStateTransition();
     void checkThirdRowStateTransition();
     void checkFourthRowStateTransition();
+    void transitionFirstRowState();
     void transitionThirdRowState();
     void transitionFourthRowState();
 
@@ -117,3 +124,4 @@ public:
 };
 
 #endif // TRAIN_SERVICE_DISPLAY_H
+
