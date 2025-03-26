@@ -8,13 +8,18 @@ You can select:
 * All trains from a station on a specified platform
 * All trains from a station to a specified destination
 * Or combinations of the above
+* Whether to show message.
+* Frequency of display update
+* Many other options...
   
 Default display:
 * The next train with calling points, operator and formation
 * The following two departures - destination and departure times
-* Any delay-related messages
+* Any delay-related messages and cancellation reasons
+* Operator and number of coaches for 1st departure
   
 Options to display
+* Location
 * Departure platform
 * Estinated departure time for calling points
 * Any National Rail messages for the station
@@ -264,6 +269,7 @@ platform   \\ Leave blank for all platforms or populate for a specific platform
 ShowCallingPointETD   \\ If set to Yes will display departure times after each calling point
 ShowMessages          \\ If set to Yes will display Network Rail message for your departure station
 ShowPlatforms         \\ If set to Yes will display the platform for the departures
+ShowLocation          \\ If set ('from') will display at the bottom (alternate with Messages)
 ```
 ## API and Font Configuration
 ```
@@ -281,6 +287,7 @@ scroll_slowdown_sleep_ms=15     \\ Lower the number, the faster the scroll
 refresh_interval_seconds=60     \\ How often the API is called to refresh the train data
 third_line_refresh_seconds=10   \\ How often the third line switches between 2nd and 3rd departure
 Message_Refresh_interval=20     \\ How often any Network Rail messages are shown
+ETD_coach_refresh_seconds=4     \\ How often the top right switches between ETD and number of coaches
 ```
 
 ## Hardware Configuration
