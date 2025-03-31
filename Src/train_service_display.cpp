@@ -11,34 +11,66 @@
 
 #include "train_service_display.h"
 
-TrainServiceDisplay::TrainServiceDisplay(RGBMatrix* m, TrainServiceParser& p, TrainAPIClient& ac, const Config& cfg) 
-    : matrix(m), canvas(m->CreateFrameCanvas()),
-      white(255, 255, 255), black(0, 0, 0), 
-      parser(p), apiClient(ac), running(true), config(cfg),
-      first_line_y(cfg.getInt("first_line_y")),
-      second_line_y(cfg.getInt("second_line_y")),
-      third_line_y(cfg.getInt("third_line_y")),
-      fourth_line_y(cfg.getInt("fourth_line_y")),
-      matrix_width(m->width()),
-      calling_points_width(0), message_width(0),
-      scroll_x_calling_points(matrix_width), scroll_x_message(matrix_width),
-      first_row_state(ETD), third_row_state(SECOND_TRAIN), fourth_row_state(CLOCK), message_scroll_complete(false) {
-
+TrainServiceDisplay::TrainServiceDisplay(RGBMatrix* m, TrainServiceParser& p, TrainAPIClient& ac, const Config& cfg)
+: matrix(m), canvas(m->CreateFrameCanvas()),
+white(255, 255, 255), black(0, 0, 0),
+parser(p), apiClient(ac), running(true), config(cfg),
+first_line_y(cfg.getInt("first_line_y")),
+second_line_y(cfg.getInt("second_line_y")),
+third_line_y(cfg.getInt("third_line_y")),
+fourth_line_y(cfg.getInt("fourth_line_y")),
+show_platforms(cfg.getBool("ShowPlatforms")),
+show_location(cfg.getBool("ShowLocation")),
+show_messages(cfg.getBool("ShowMessages")),
+ETD_coach_refresh_seconds(cfg.getInt("ETD_coach_refresh_seconds")),
+third_line_refresh_seconds(cfg.getInt("third_line_refresh_seconds")),
+Message_Refresh_interval(cfg.getInt("Message_Refresh_interval")),
+refresh_interval_seconds(cfg.getInt("refresh_interval_seconds")),
+matrix_width(m->width()),
+calling_points_width(0),
+message_width(0),
+scroll_x_calling_points(matrix_width),
+scroll_x_message(matrix_width),
+first_row_state(ETD),
+third_row_state(SECOND_TRAIN),
+fourth_row_state(CLOCK),
+message_scroll_complete(false),
+data_refresh_pending(false),
+data_refresh_completed(false) {
+    
     if (!font.LoadFont(config.get("fontPath").c_str())) {
         throw std::runtime_error("Font loading failed for: " + config.get("fontPath"));
     }
     
     // Initialize timestamps
+    last_first_row_toggle = std::chrono::steady_clock::now();
     last_third_row_toggle = std::chrono::steady_clock::now();
     last_fourth_row_toggle = std::chrono::steady_clock::now();
     last_refresh = std::chrono::steady_clock::now();
     
-    DEBUG_PRINT("Display initialized with font: " << config.get("fontPath"));
-    
     // Set parser options from config
     parser.setShowCallingPointETD(config.getBool("ShowCallingPointETD"));
     
-    // Initial data load
+    // Has a platform been selected?
+    if(!config.get("platform").empty()){
+        parser.setSelectedPlatform(config.get("platform"));
+    }
+    
+    DEBUG_PRINT("Display initialisation. font: " << config.get("fontPath") <<
+                "Showing Location: " << show_location << "Selected platform (bool/platform): " << selected_platform << "/" << platform_selected);
+    DEBUG_PRINT("Configuration: " <<
+                "first_line_y: " << first_line_y <<
+                ". second_line_y: " << second_line_y <<
+                ". third_line_y: " << third_line_y <<
+                ". fourth_line_y: " << fourth_line_y <<
+                ". ETD_coach_refresh_seconds: " << ETD_coach_refresh_seconds <<
+                ". third_line_refresh_seconds: " << third_line_refresh_seconds <<
+                ". Message_Refresh_interval: " << Message_Refresh_interval <<
+                ". refresh_interval_seconds (data): " << refresh_interval_seconds << ".");
+                
+    // Initial data load and version set
+    display_data_version = 1;
+    api_data_version = 1;
     updateDisplayContent();
     
     // Initial clock value
@@ -61,55 +93,52 @@ void TrainServiceDisplay::updateDisplayContent() {
             return;
         }
         
-        // Are we showing platforms?
-        show_platforms = config.getBool("ShowPlatforms");
-
-        // Are we showing location?
-        show_location = config.getBool("ShowLocation");
-
-        // Has a platform been selected?
-        if(!config.get("platform").empty()){
-            parser.setSelectedPlatform(config.get("platform"));
-        }
+        DEBUG_PRINT("Showing platforms: " << show_platforms);
+        DEBUG_PRINT("Selected platform: " << parser.getSelectedPlatform());
+        DEBUG_PRINT("Showing location: " << show_location);
+        DEBUG_PRINT("Updated using API Data version " << getCurrentAPIVersion() << " and Display data version " << getCurrentDisplayVersion() << ".");
 
         // Find Services
         parser.findServices();
         
         // Get location name
         location_name = parser.getLocationName();
+        if (show_location) {
+            int location_width = calculateTextWidth(location_name);
+            location_x_position = (matrix_width - location_width)/2;
+        }
         
         // Create the Top Line
-        index = parser.getFirstDeparture();
-        if(index == 999) {
+        first_service_index = parser.getFirstDeparture();
+        if(first_service_index == 999) {
             top_line = "No more services";
+            calling_points = "";
         } else {
-            DEBUG_PRINT("Top line. Index: " << index << " "
-                        << parser.getScheduledDepartureTime(index) << " "
-                        << parser.getDestination(index) << " "
-                        << parser.getEstimatedDepartureTime(index) << " "
-                        << parser.getOperator(index) << " "
-                        << parser.getCoaches(index, true) << " "
-                        << ". Cancelled flag: " << parser.isCancelled(index));
-
-            top_line = parser.getScheduledDepartureTime(index) + " ";
-            // Show the platform if selected
+            first_service_info = parser.getService(first_service_index);
+            
+            if(debug_mode) {
+                DEBUG_PRINT("Data structure for first service: ");
+                parser.debugPrintServiceStruct(first_service_index);
+                DEBUG_PRINT("------------");
+            }
+            
+            top_line = first_service_info.scheduledTime + " ";
             if (show_platforms) {
-                top_line = top_line + parser.getPlatform(index) + " ";
+                top_line = top_line + first_service_info.platform + " ";
             }
-            top_line = top_line + parser.getDestination(index) + " ";
-            // top_line = top_line + parser.getEstimatedDepartureTime(index);
-
-            if (parser.isCancelled(index)) {
-                calling_points = parser.getCancelReason(index);
-                DEBUG_PRINT("Cancellation reason: " << parser.getCancelReason(index));
+            
+            top_line = top_line + first_service_info.destination  + " ";
+            
+            if(first_service_info.isCancelled) {
+                calling_points = first_service_info.cancelReason;
             } else {
-                calling_points = parser.getCallingPoints(index) + parser.getOperator(index) + parser.getCoaches(index, true);
+                calling_points = parser.getCallingPoints(first_service_index) + " " + first_service_info.operator_name + parser.getCoaches(first_service_index, true);
             }
-
-            // Get delay reason if the first train is delayed
-            std::string delay_reason = parser.getDelayReason(index);
-            if (!delay_reason.empty()) {
-                calling_points += " - " + delay_reason;
+            
+            if(first_service_info.isDelayed){
+                if(!first_service_info.delayReason.empty()){
+                    calling_points += " - " + first_service_info.delayReason;
+                }
             }
         }
 
@@ -118,45 +147,43 @@ void TrainServiceDisplay::updateDisplayContent() {
         if(index == 999) {
             second_line = "No more services";
         } else {
-            DEBUG_PRINT("Second line. Index: " << index << " "
-                        << parser.getScheduledDepartureTime(index) << " "
-                        << parser.getDestination(index) << " "
-                        << parser.getEstimatedDepartureTime(index) << " "
-                        << parser.getOperator(index) << " "
-                        << parser.getCoaches(index, true) << " "
-                        << ". Cancelled flag: " << parser.isCancelled(index));
-
-            second_line ="2nd " + parser.getScheduledDepartureTime(index) + " ";
-            if (show_platforms) {
-                second_line = second_line + parser.getPlatform(index) + " ";
+            second_service_info = parser.getService(index);
+            
+            if(debug_mode) {
+                DEBUG_PRINT("Data structure for second service: ");
+                parser.debugPrintServiceStruct(index);
+                DEBUG_PRINT("------------");
             }
-            second_line = second_line + parser.getDestination(index) + " ";
-            second_line = second_line + parser.getEstimatedDepartureTime(index);
+            
+            second_line = "2nd " + second_service_info.scheduledTime + " ";
+            if(show_platforms && !second_service_info.platform.empty()) {
+                second_line += second_service_info.platform + " ";
+            }
+            second_line += second_service_info.destination + " " + second_service_info.estimatedTime;
+            
         }
 
         // Create the Third Line
         index = parser.getThirdDeparture();
         if(index == 999) {
-            second_line = "No more services";
+            third_line = "No more services";
         } else {
-            DEBUG_PRINT("Third line. Index: " << index << " "
-                        << parser.getScheduledDepartureTime(index) << " "
-                        << parser.getDestination(index) << " "
-                        << parser.getEstimatedDepartureTime(index) << " "
-                        << parser.getOperator(index) << " "
-                        << parser.getCoaches(index, true) << " "
-                        << ". Cancelled flag: " << parser.isCancelled(index));
-
-            third_line ="3rd " + parser.getScheduledDepartureTime(index) + " ";
-            if (show_platforms) {
-                third_line = third_line + parser.getPlatform(index) + " ";
+            third_service_info = parser.getService(index);
+            
+            if(debug_mode) {
+                DEBUG_PRINT("Data structure for third service: ");
+                parser.debugPrintServiceStruct(index);
+                DEBUG_PRINT("------------");
             }
-            third_line = third_line + parser.getDestination(index) + " ";
-            third_line = third_line + parser.getEstimatedDepartureTime(index);
+            
+            third_line = "3rd " + third_service_info.scheduledTime + " ";
+            
+            if(show_platforms && !third_service_info.platform.empty()) {
+                third_line += third_service_info.platform + " ";
+            }
+            
+            third_line += third_service_info.destination + " " + third_service_info.estimatedTime;
         }
-        
-        // Check if messages should be shown according to config
-        show_messages = config.getBool("ShowMessages");
         
         // Get any NRCC messages
         nrcc_message = "";
@@ -170,13 +197,20 @@ void TrainServiceDisplay::updateDisplayContent() {
         
         // Calculate text widths for scrolling
         calculateTextWidths();
+        
+        DEBUG_PRINT("Display Content update:" << std::endl <<
+                    "Top line:" << top_line << std::endl <<
+                    "Calling Points: " << calling_points << std::endl <<
+                    "2nd Line:" << second_line << std::endl <<
+                    "3rd Line:" << third_line);
+        
     } catch (const std::exception& e) {
         DEBUG_PRINT("Error updating display content: " << e.what());
         // Set fallback content in case of error
         top_line = "Error fetching data";
         calling_points = e.what();
-        second_line = "Please try again later";
-        third_line = "Please try again later";
+        second_line = "Error fetching data";
+        third_line = "Error fetching data";
     }
 }
 
@@ -227,24 +261,24 @@ void TrainServiceDisplay::renderFrame() {
     // Draw static top line
     rgb_matrix::DrawText(canvas, font, 0, first_line_y, white, top_line.c_str());
     
-    // Draw right-justified ETD or Coach configuration on top line
-    // Create the text
-    size_t first_departure = parser.getFirstDeparture();
-    std::string first_ETD = parser.getEstimatedDepartureTime(first_departure);
-    std::string first_coaches = parser.getCoaches(first_departure, false);
-    if(first_coaches.empty()) {
-        first_coaches = first_ETD;
-    } else {
-        first_coaches = first_coaches + " coaches";
+    // Draw right-justified ETD or Coach configuration on top line if the first service exists
+    if(first_service_index != 999) {
+        std::string first_ETD = first_service_info.estimatedTime;
+        std::string first_coaches = first_service_info.coaches;
+        if(first_coaches.empty()) {
+            first_coaches = first_ETD;
+        } else {
+            first_coaches = first_coaches + " coaches";
+        }
+        std::string ETD_coaches = (first_row_state == ETD) ? first_ETD : first_coaches;
+        
+        // Right-justify ETD/Coach
+        int coach_etd_width = calculateTextWidth(ETD_coaches);
+        int coach_etd_position = (matrix_width - coach_etd_width);
+        
+        // Draw ETD/Coach
+        rgb_matrix::DrawText(canvas, font, coach_etd_position, first_line_y, white, ETD_coaches.c_str());
     }
-    std::string ETD_coaches = (first_row_state == ETD) ? first_ETD : first_coaches;
-    
-    // Right-justify ETD/Coach
-    int coach_etd_width = calculateTextWidth(ETD_coaches);
-    int coach_etd_position = (matrix_width - coach_etd_width);
-    
-    // Draw ETD/Coach
-    rgb_matrix::DrawText(canvas, font, coach_etd_position, first_line_y, white, ETD_coaches.c_str());    
     
     // Draw scrolling calling points with wrap-around
     renderScrollingText(calling_points, scroll_x_calling_points, calling_points_width, second_line_y);
@@ -261,9 +295,7 @@ void TrainServiceDisplay::renderFrame() {
         
         // Draw the centred Location Name if selected
         if (show_location) {
-            int location_width = calculateTextWidth(location_name);
-            x_position = (matrix_width - location_width)/2;
-            rgb_matrix::DrawText(canvas, font, x_position, fourth_line_y, white, location_name.c_str());
+            rgb_matrix::DrawText(canvas, font, location_x_position, fourth_line_y, white, location_name.c_str());
         }
         
         // Right-Justify the clock text
@@ -355,7 +387,7 @@ void TrainServiceDisplay::checkFirstRowStateTransition(){
     auto now = std::chrono::steady_clock::now();
     
     // For ETD/Coach, toggle based on timer
-    if (now - last_first_row_toggle >= std::chrono::seconds(config.getInt("ETD_coach_refresh_seconds"))) {
+    if (now - last_first_row_toggle >= std::chrono::seconds(ETD_coach_refresh_seconds)) {
         transitionFirstRowState();
         last_first_row_toggle = now;
     }
@@ -366,7 +398,7 @@ void TrainServiceDisplay::checkThirdRowStateTransition() {
     auto now = std::chrono::steady_clock::now();
     
     // For train information, toggle based on timer
-    if (now - last_third_row_toggle >= std::chrono::seconds(config.getInt("third_line_refresh_seconds"))) {
+    if (now - last_third_row_toggle >= std::chrono::seconds(third_line_refresh_seconds)) {
         transitionThirdRowState();
         last_third_row_toggle = now;
     }
@@ -385,12 +417,12 @@ void TrainServiceDisplay::checkFourthRowStateTransition() {
     if (fourth_row_state == MESSAGE) {
         // If we're showing a message, only toggle when scrolling is complete
         if (message_scroll_complete && 
-            now - last_fourth_row_toggle >= std::chrono::seconds(config.getInt("Message_Refresh_interval"))) {
+            now - last_fourth_row_toggle >= std::chrono::seconds(Message_Refresh_interval)) {
             should_toggle = true;
         }
     } else {
         // For clock, toggle based on timer
-        if (now - last_fourth_row_toggle >= std::chrono::seconds(config.getInt("Message_Refresh_interval"))) {
+        if (now - last_fourth_row_toggle >= std::chrono::seconds(Message_Refresh_interval)) {
             should_toggle = true;
         }
     }
@@ -429,27 +461,80 @@ void TrainServiceDisplay::transitionFourthRowState() {
 }
 
 void TrainServiceDisplay::refreshData() {
-    try {
-        std::string api_data = apiClient.fetchDepartures(
-            config.get("from"), config.get("to"));
-        parser.updateData(api_data);
-        updateDisplayContent();
-    } catch (const std::exception& e) {
-        std::cerr << "Error refreshing data: " << e.what() << std::endl;
+    // If a refresh is already pending, don't start another one
+    if (data_refresh_pending.load()) {
+        return;
     }
+    
+    // Set flag to indicate a refresh is pending
+    data_refresh_pending.store(true);
+    
+    // Start a new thread for the API call
+    if (api_thread.joinable()) {
+        api_thread.join(); // Clean up previous thread if any
+    }
+    
+    api_thread = std::thread([this]() {
+        try {
+            // Fetch data from API
+            std::string api_data = apiClient.fetchDepartures(
+                config.get("from"), config.get("to"));
+            
+            // Store the data safely
+            {
+                std::lock_guard<std::mutex> lock(api_data_mutex);
+                new_api_data = api_data;
+            }
+            
+            // Set flags to indicate completion
+            data_refresh_completed.store(true);
+            data_refresh_pending.store(false);
+            api_data_version.fetch_add(1, std::memory_order_release);
+            
+            DEBUG_PRINT("API data refresh completed in background thread. API Data version: " << getCurrentAPIVersion() << ". Display data version: " << getCurrentDisplayVersion());
+        } catch (const std::exception& e) {
+            std::cerr << "Error refreshing data in background thread: " << e.what() << std::endl;
+            data_refresh_pending.store(false);
+        }
+    });
+    
+    // Detach the thread so it runs independently
+    api_thread.detach();
 }
 
 void TrainServiceDisplay::run() {
     while (running) {
         try {
-            // Refresh data if needed
+            // Check if it's time to start a new data refresh
             auto now = std::chrono::steady_clock::now();
-            if (now - last_refresh >= std::chrono::seconds(
-                config.getInt("refresh_interval_seconds"))) {
+            if (!data_refresh_pending.load() && 
+                now - last_refresh >= std::chrono::seconds(
+                refresh_interval_seconds)) {
                 refreshData();
                 last_refresh = std::chrono::steady_clock::now();
             }
             
+            // Check if a data refresh has completed
+            if (data_refresh_completed.load()) {
+                // Apply the new data to the parser and update display
+                std::string api_data;
+                {
+                    std::lock_guard<std::mutex> lock(api_data_mutex);
+                    api_data = new_api_data;
+                }
+                
+                // Update the parser with new data
+                parser.updateData(api_data);
+                updateDisplayContent();
+                
+                // Reset the completion flag
+                data_refresh_completed.store(false);
+                display_data_version.fetch_add(1, std::memory_order_release);
+                
+                DEBUG_PRINT("Applied new API data to display. API Data version: " << getCurrentAPIVersion() << ". Display data version: " << getCurrentDisplayVersion());
+            }
+            
+            // Remainder of the run method
             // Check for state transitions
             checkFirstRowStateTransition();
             checkThirdRowStateTransition();
@@ -471,9 +556,39 @@ void TrainServiceDisplay::run() {
                 config.getInt("refresh_interval_seconds")));
         }
     }
+    
+    // Clean up the API thread if we're shutting down
+    if (api_thread.joinable()) {
+        api_thread.join();
+    }
 }
 
 void TrainServiceDisplay::stop() {
     running = false;
+
+    // Clean up the API thread if it's still running
+    if (api_thread.joinable()) {
+        api_thread.join();
+    }
+}
+
+TrainServiceDisplay::~TrainServiceDisplay() {
+    // First, signal that we're shutting down
+    running = false;
+    
+    // Clean up the API thread if it's still running
+    if (api_thread.joinable()) {
+        try {
+            api_thread.join();
+        } catch (const std::exception& e) {
+            std::cerr << "Error joining API thread in destructor: " << e.what() << std::endl;
+        }
+    }
+    
+    // We don't need to delete the matrix pointer here as it's passed
+    // in by the caller and should be managed outside this class.
+    // Similarly, the parser and API client references are owned by the caller.
+    
+    DEBUG_PRINT("TrainServiceDisplay destroyed");
 }
 
