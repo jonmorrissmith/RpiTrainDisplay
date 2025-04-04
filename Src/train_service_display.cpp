@@ -12,43 +12,84 @@
 #include "train_service_display.h"
 
 TrainServiceDisplay::TrainServiceDisplay(RGBMatrix* m, TrainServiceParser& p, TrainAPIClient& ac, const Config& cfg)
-: matrix(m), canvas(m->CreateFrameCanvas()),
-white(255, 255, 255), black(0, 0, 0),
-parser(p), apiClient(ac), running(true), config(cfg),
-first_line_y(cfg.getInt("first_line_y")),
-second_line_y(cfg.getInt("second_line_y")),
-third_line_y(cfg.getInt("third_line_y")),
-fourth_line_y(cfg.getInt("fourth_line_y")),
+: matrix(m),
+parser(p),
+apiClient(ac),
+config(cfg),
+
+// Set flags from configuration
 show_platforms(cfg.getBool("ShowPlatforms")),
 show_location(cfg.getBool("ShowLocation")),
 show_messages(cfg.getBool("ShowMessages")),
+
+// Set timing from configuration
 ETD_coach_refresh_seconds(cfg.getInt("ETD_coach_refresh_seconds")),
 third_line_refresh_seconds(cfg.getInt("third_line_refresh_seconds")),
 Message_Refresh_interval(cfg.getInt("Message_Refresh_interval")),
 refresh_interval_seconds(cfg.getInt("refresh_interval_seconds")),
-matrix_width(m->width()),
-calling_points_width(0),
-message_width(0),
-scroll_x_calling_points(matrix_width),
-scroll_x_message(matrix_width),
-first_row_state(ETD),
-third_row_state(SECOND_TRAIN),
-fourth_row_state(CLOCK),
-message_scroll_complete(false),
-data_refresh_pending(false),
-data_refresh_completed(false) {
+
+white(255, 255, 255), black(0, 0, 0)
+{
+    // We're up and running!
+    running = true;
     
+    // Load and cache the font
     if (!font.LoadFont(config.get("fontPath").c_str())) {
         throw std::runtime_error("Font loading failed for: " + config.get("fontPath"));
     }
+    font_cache.setFont(font);
+    font_baseline = font_cache.getBaseline();
+    font_height = font_cache.getheight();
     
-    // Initialize timestamps
+    // Cache matrix parameters
+    matrix_width = m->width();
+    matrix_height = m->height();
+    canvas = m->CreateFrameCanvas();
+    
+    // Initialise scrolling positions
+    calling_points_text.x_position = matrix_width;
+    nrcc_message_text.x_position = matrix_width;
+    
+    // Store the amount of space available to display the calling points;
+    // Width of 'Calling at:' never changes
+    calling_at_text.setTextAndWidth("Calling at:", font_cache);
+    space_for_calling_points = matrix_width - calling_at_text.width;
+    scroll_calling_points = true;
+    
+    // Initialise toggle states
+    first_row_state = ETD;
+    third_row_state = SECOND_TRAIN;
+    fourth_row_state = LOCATION;
+    message_scroll_complete = false;
+    data_refresh_pending = false;
+    data_refresh_completed = false;
+    
+    // Initialize toggle timestamps
     last_first_row_toggle = std::chrono::steady_clock::now();
     last_third_row_toggle = std::chrono::steady_clock::now();
     last_fourth_row_toggle = std::chrono::steady_clock::now();
     last_refresh = std::chrono::steady_clock::now();
     
+    // Initialize text y positions
+    first_departure.y_position = config.getInt("first_line_y");
+    first_departure_coaches.y_position = config.getInt("first_line_y");
+    first_departure_etd.y_position = config.getInt("first_line_y");
+    calling_points_text.y_position = config.getInt("second_line_y");
+    calling_at_text.y_position = config.getInt("second_line_y");
+    second_departure.y_position = config.getInt("third_line_y");
+    second_departure_etd.y_position = config.getInt("third_line_y");
+    third_departure.y_position= config.getInt("third_line_y");
+    third_departure_etd.y_position= config.getInt("third_line_y");
+    clock_display_text.y_position = config.getInt("fourth_line_y");
+    nrcc_message_text.y_position = config.getInt("fourth_line_y");
+    location_name_text.y_position = config.getInt("fourth_line_y");
+    
+    // Initialize text x positions
+    calling_points_text.x_position = matrix_width;
+    nrcc_message_text.x_position = matrix_width;
+    
     // Set parser options from config
+    // Are calling points ETD's being shown?
     parser.setShowCallingPointETD(config.getBool("ShowCallingPointETD"));
     
     // Has a platform been selected?
@@ -56,17 +97,28 @@ data_refresh_completed(false) {
         parser.setSelectedPlatform(config.get("platform"));
     }
     
-    DEBUG_PRINT("Display initialisation. font: " << config.get("fontPath") <<
-                "Showing Location: " << show_location << "Selected platform (bool/platform): " << selected_platform << "/" << platform_selected);
-    DEBUG_PRINT("Configuration: " <<
-                "first_line_y: " << first_line_y <<
-                ". second_line_y: " << second_line_y <<
-                ". third_line_y: " << third_line_y <<
-                ". fourth_line_y: " << fourth_line_y <<
-                ". ETD_coach_refresh_seconds: " << ETD_coach_refresh_seconds <<
-                ". third_line_refresh_seconds: " << third_line_refresh_seconds <<
-                ". Message_Refresh_interval: " << Message_Refresh_interval <<
-                ". refresh_interval_seconds (data): " << refresh_interval_seconds << ".");
+    DEBUG_PRINT("Display initialisation. font: " << config.get("fontPath") << std::endl <<
+                "Selected platform (bool/platform): " << selected_platform << "/" << platform_selected << std::endl <<
+                "Showing Location: " << show_location << std::endl <<
+                "Showing messages: " << show_messages << std::endl <<
+                "Showing platforms: " << show_platforms);
+    DEBUG_PRINT("Configuration: " << std::endl <<
+                "Matrix width: " << matrix_width << std::endl <<
+                "first_departure y: " << first_departure.y_position << std::endl <<
+                "calling_points_text y: " << calling_points_text.y_position << std::endl <<
+                "calling_points_text x: " << calling_points_text.x_position << std::endl <<
+                "calling_at_text y: " << calling_at_text.y_position << std::endl <<
+                "calling_at_text x: " << calling_at_text.x_position << std::endl <<
+                "second_departure y: " << second_departure.y_position << std::endl <<
+                "second_departure etd y: " << second_departure_etd.y_position << std::endl <<
+                "third_departure y: " << third_departure.y_position << std::endl <<
+                "third_departure etd y: " << third_departure_etd.y_position << std::endl <<
+                "nrcc_message_text y: " << nrcc_message_text.y_position << std::endl <<
+                "nrcc_message_text x: " << nrcc_message_text.x_position << std::endl <<
+                "ETD_coach_refresh_seconds: " << ETD_coach_refresh_seconds << std::endl <<
+                "third_line_refresh_seconds: " << third_line_refresh_seconds << std::endl <<
+                "Message_Refresh_interval: " << Message_Refresh_interval << std::endl <<
+                "refresh_interval_seconds (data): " << refresh_interval_seconds << ".");
                 
     // Initial data load and version set
     display_data_version = 1;
@@ -78,139 +130,178 @@ data_refresh_completed(false) {
 }
 
 void TrainServiceDisplay::updateDisplayContent() {
-    size_t index;
 
     try {
         // Get the number of services
         num_services = parser.getNumberOfServices();
+        DEBUG_PRINT("Updating the Display Content");
         DEBUG_PRINT("Number of services available: " << num_services);
         
         if (num_services == 0) {
-            top_line = "No services";
-            calling_points = "";
-            second_line = "";
-            third_line = "";
+            first_departure = "No services";
+            calling_points_text = "";
+            second_departure = "";
+            third_departure = "";
             return;
         }
         
         DEBUG_PRINT("Showing platforms: " << show_platforms);
         DEBUG_PRINT("Selected platform: " << parser.getSelectedPlatform());
         DEBUG_PRINT("Showing location: " << show_location);
-        DEBUG_PRINT("Updated using API Data version " << getCurrentAPIVersion() << " and Display data version " << getCurrentDisplayVersion() << ".");
+        DEBUG_PRINT("Starting display refresh. API version: " << getCurrentAPIVersion() << ". Display version: " << getCurrentDisplayVersion() << ". Cache version: " << parser.getCurrentVersion());
 
         // Find Services
         parser.findServices();
         
         // Get location name
-        location_name = parser.getLocationName();
+        location_name_text = "";
+ 
+        // If we're showing the location then get the width and calculate the x position to centre on the display
         if (show_location) {
-            int location_width = calculateTextWidth(location_name);
-            location_x_position = (matrix_width - location_width)/2;
+            location_name_text.setTextAndWidth(parser.getLocationName(), font_cache);
+            location_name_text.x_position = (matrix_width - location_name_text.width)/2;
         }
         
-        // Create the Top Line
+        // Create the Top Line - get the index of the first service to depart.
         first_service_index = parser.getFirstDeparture();
+        
         if(first_service_index == 999) {
-            top_line = "No more services";
-            calling_points = "";
+            first_departure= "No more services";
+            calling_points_text = "";
+            calling_at_text = "";
         } else {
+            // Populate the ServiceInfo struct for the first service.
             first_service_info = parser.getService(first_service_index);
             
-            if(debug_mode) {
-                DEBUG_PRINT("Data structure for first service: ");
-                parser.debugPrintServiceStruct(first_service_index);
-                DEBUG_PRINT("------------");
+            // Populate the first departure on the top line
+            first_departure = "";
+            first_departure << first_service_info.scheduledTime << " ";
+            
+            // Instert"'Plat." and the platform number if we're showing platforms.
+            if (show_platforms && !first_service_info.platform.empty()) {
+                first_departure << "Plat." << first_service_info.platform << " ";
             }
             
-            top_line = first_service_info.scheduledTime + " ";
-            if (show_platforms) {
-                top_line = top_line + first_service_info.platform + " ";
-            }
+            first_departure << first_service_info.destination << " ";
             
-            top_line = top_line + first_service_info.destination  + " ";
+            // Populate Coaches and ETD
+            first_departure_etd.setTextAndWidth(first_service_info.estimatedTime, font_cache);
             
-            if(first_service_info.isCancelled) {
-                calling_points = first_service_info.cancelReason;
+            // If there's no coach information we'll just display the ETD.
+            if (first_service_info.coaches.empty()) {
+                first_departure_coaches = first_departure_etd;
             } else {
-                calling_points = parser.getCallingPoints(first_service_index) + " " + first_service_info.operator_name + parser.getCoaches(first_service_index, true);
+                first_departure_coaches.setTextAndWidth(first_service_info.coaches + " coaches", font_cache);
+            }
+    
+            // Set x_position to right-justify the ETD and Coaches text
+            first_departure_etd.x_position = matrix_width - first_departure_etd.width;
+            first_departure_coaches.x_position = matrix_width - first_departure_coaches.width;
+            
+            // Create calling points
+            calling_at_text = "Calling at:";
+            calling_points_text = "";
+            if(first_service_info.isCancelled) {
+                calling_points_text << first_service_info.cancelReason;
+            } else {
+                // Because we lazy-load the calling-points, we have to use the getCallingPoints method. The calling points are stored in the parser class after this has run.
+                calling_points_text << parser.getCallingPoints(first_service_index) << " " << first_service_info.operator_name << parser.getCoaches(first_service_index, true);
             }
             
             if(first_service_info.isDelayed){
                 if(!first_service_info.delayReason.empty()){
-                    calling_points += " - " + first_service_info.delayReason;
+                    calling_points_text << " - " << first_service_info.delayReason;
                 }
             }
+            //DEBUG_PRINT("-----------------------");
+            //if (debug_mode)  parser.debugPrintServiceStruct(first_service_index);
+            DEBUG_PRINT("Display Content update:" << std::endl <<
+                        "First Departure:" << first_departure.text << std::endl <<
+                        "Calling Points: " << calling_points_text.text << " (width of the scroll: " << calling_points_text.width << ")" );
         }
 
         // Create the Second Line
-        index = parser.getSecondDeparture();
-        if(index == 999) {
-            second_line = "No more services";
+        second_service_index = parser.getSecondDeparture();
+        if(second_service_index == 999) {
+            second_departure = "No more services";
+            second_departure_etd = "";
         } else {
-            second_service_info = parser.getService(index);
-            
-            if(debug_mode) {
-                DEBUG_PRINT("Data structure for second service: ");
-                parser.debugPrintServiceStruct(index);
-                DEBUG_PRINT("------------");
-            }
-            
-            second_line = "2nd " + second_service_info.scheduledTime + " ";
+            second_service_info = parser.getService(second_service_index);
+
+            second_departure = "2nd ";
+            second_departure << second_service_info.scheduledTime + " ";
             if(show_platforms && !second_service_info.platform.empty()) {
-                second_line += second_service_info.platform + " ";
+                second_departure << "Plat." << second_service_info.platform << " ";
             }
-            second_line += second_service_info.destination + " " + second_service_info.estimatedTime;
+            second_departure << second_service_info.destination << " ";
+            
+            // Populate Coaches and ETD
+            second_departure_etd.setTextAndWidth(second_service_info.estimatedTime, font_cache);
+    
+            // Set x_position to right-justify the text
+            second_departure_etd.x_position = matrix_width - second_departure_etd.width;
+            
+            //DEBUG_PRINT("-----------------------");
+            //if(debug_mode) parser.debugPrintServiceStruct(second_service_index);
+            DEBUG_PRINT("2nd Departure: " << second_departure.text << std::endl <<
+                        "2nd Departure ETD: " << second_departure_etd.text);
             
         }
 
         // Create the Third Line
-        index = parser.getThirdDeparture();
-        if(index == 999) {
-            third_line = "No more services";
+        third_service_index = parser.getThirdDeparture();
+        if(third_service_index == 999) {
+            third_departure = "No more services";
+            third_departure_etd = "";
         } else {
-            third_service_info = parser.getService(index);
+            third_service_info = parser.getService(third_service_index);
             
-            if(debug_mode) {
-                DEBUG_PRINT("Data structure for third service: ");
-                parser.debugPrintServiceStruct(index);
-                DEBUG_PRINT("------------");
-            }
-            
-            third_line = "3rd " + third_service_info.scheduledTime + " ";
+            third_departure = "3rd ";
+            third_departure << third_service_info.scheduledTime << " ";
             
             if(show_platforms && !third_service_info.platform.empty()) {
-                third_line += third_service_info.platform + " ";
+                third_departure << "Plat." <<  third_service_info.platform << " ";
             }
             
-            third_line += third_service_info.destination + " " + third_service_info.estimatedTime;
+            third_departure << third_service_info.destination << " ";
+            
+            // Populate Coaches and ETD
+            third_departure_etd.setTextAndWidth(third_service_info.estimatedTime, font_cache);
+            
+            // Set x_position to right-justify the text
+            third_departure_etd.x_position = matrix_width - third_departure_etd.width;
+            
+            //DEBUG_PRINT("-----------------------");
+            //if(debug_mode) parser.debugPrintServiceStruct(third_service_index);
+            DEBUG_PRINT("3rd Departure: " << third_departure.text<< std::endl <<
+                        "3rd Departure ETD: " << third_departure_etd.text);
         }
         
         // Get any NRCC messages
-        nrcc_message = "";
         has_message = false;
+        nrcc_message_text = "";
         
         if (show_messages) {
-            nrcc_message = parser.getNrccMessages();
-            has_message = !nrcc_message.empty();
-            DEBUG_PRINT("NRCC Message: " << (has_message ? nrcc_message : "None"));
+            nrcc_message_text << parser.getNrccMessages();
+            has_message = !nrcc_message_text.empty();
+            DEBUG_PRINT("NRCC Message: " << (has_message ? nrcc_message_text.text : "None"));
+            // End New
         }
         
         // Calculate text widths for scrolling
-        calculateTextWidths();
-        
-        DEBUG_PRINT("Display Content update:" << std::endl <<
-                    "Top line:" << top_line << std::endl <<
-                    "Calling Points: " << calling_points << std::endl <<
-                    "2nd Line:" << second_line << std::endl <<
-                    "3rd Line:" << third_line);
+        calling_points_text.setWidth(font_cache);
+        // If the width of the calling points is less than the width of the space for the calling points, then don't scroll.
+        scroll_calling_points = (calling_points_text.width < space_for_calling_points ? false : true);
+        nrcc_message_text.setWidth(font_cache);
         
     } catch (const std::exception& e) {
         DEBUG_PRINT("Error updating display content: " << e.what());
         // Set fallback content in case of error
-        top_line = "Error fetching data";
-        calling_points = e.what();
-        second_line = "Error fetching data";
-        third_line = "Error fetching data";
+        first_departure = "Error fetching data";
+        calling_points_text = e.what();
+        second_departure = "Error fetching data";
+        third_departure = "Error fetching data";
+        // End new
     }
 }
 
@@ -225,161 +316,107 @@ void TrainServiceDisplay::updateClockDisplay() {
                << std::setfill('0') << std::setw(2) << tm->tm_min << ":"
                << std::setfill('0') << std::setw(2) << tm->tm_sec;
     
-    clock_display = timeStream.str();
-}
-
-void TrainServiceDisplay::calculateTextWidths() {
-    calling_points_width = 0;
-    for (const char& c : calling_points) {
-        calling_points_width += font.CharacterWidth(c);
-    }
-    
-    message_width = 0;
-    if (has_message) {
-        for (const char& c : nrcc_message) {
-            message_width += font.CharacterWidth(c);
-        }
-    }
-
-    calling_at_width = 0;
-    for (const char& c : "Calling at:") {
-        calling_at_width += font.CharacterWidth(c);
-    }
-}
-
-int TrainServiceDisplay::calculateTextWidth(const std::string& text) {
-    int width = 0;
-    for (const char& c : text) {
-        width += font.CharacterWidth(c);
-    }
-    return width;
+    clock_display_text.setTextAndWidth(timeStream.str(), font_cache);
+    clock_display_text.x_position = matrix_width - clock_display_text.width;
 }
 
 void TrainServiceDisplay::renderFrame() {
     canvas->Clear();
+    int x, y;
     
     // Draw static top line
-    rgb_matrix::DrawText(canvas, font, 0, first_line_y, white, top_line.c_str());
+    rgb_matrix::DrawText(canvas, font, 0, first_departure.y_position, white, first_departure.text.c_str());
     
-    // Draw right-justified ETD or Coach configuration on top line if the first service exists
+    // Draw right-justified ETD or Coach configuration for the first service if the first service exists
     if(first_service_index != 999) {
-        std::string first_ETD = first_service_info.estimatedTime;
-        std::string first_coaches = first_service_info.coaches;
-        if(first_coaches.empty()) {
-            first_coaches = first_ETD;
+        
+        if (first_row_state == ETD) {
+            rgb_matrix::DrawText(canvas, font, first_departure_etd.x_position, first_departure_etd.y_position, white, first_departure_etd.text.c_str());
         } else {
-            first_coaches = first_coaches + " coaches";
+            rgb_matrix::DrawText(canvas, font, first_departure_coaches.x_position, first_departure_coaches.y_position, white, first_departure_coaches.text.c_str());
         }
-        std::string ETD_coaches = (first_row_state == ETD) ? first_ETD : first_coaches;
-        
-        // Right-justify ETD/Coach
-        int coach_etd_width = calculateTextWidth(ETD_coaches);
-        int coach_etd_position = (matrix_width - coach_etd_width);
-        
-        // Draw ETD/Coach
-        rgb_matrix::DrawText(canvas, font, coach_etd_position, first_line_y, white, ETD_coaches.c_str());
     }
     
     // Draw scrolling calling points with wrap-around
-    renderScrollingText(calling_points, scroll_x_calling_points, calling_points_width, second_line_y);
-
+    renderScrollingCallingPoints();
+    
     // Draw current third line content based on state
-    std::string current_third_line = (third_row_state == SECOND_TRAIN) ? second_line : third_line;
-    rgb_matrix::DrawText(canvas, font, 0, third_line_y, white, current_third_line.c_str());
-
-    // Draw fourth row content (either clock or message)
-    if (fourth_row_state == CLOCK || !has_message) {
-        // Update clock display
-        updateClockDisplay();
-        int x_position;
-        
-        // Draw the centred Location Name if selected
-        if (show_location) {
-            rgb_matrix::DrawText(canvas, font, location_x_position, fourth_line_y, white, location_name.c_str());
-        }
-        
-        // Right-Justify the clock text
-        int clock_width = calculateTextWidth(clock_display);
-        x_position = (matrix_width - clock_width);
-        
-        // Draw the right-justified clock
-        rgb_matrix::DrawText(canvas, font, x_position, fourth_line_y, white, clock_display.c_str());
-        
-    } else if (fourth_row_state == MESSAGE && has_message) {
-        // Draw scrolling message (the clock will be drawn inside renderScrollingText)
-        renderScrollingText(nrcc_message, scroll_x_message, message_width, fourth_line_y);
-        updateMessageScroll();
+    if (third_row_state == SECOND_TRAIN) {
+        rgb_matrix::DrawText(canvas, font, 0, second_departure.y_position, white, second_departure.text.c_str());
+        rgb_matrix::DrawText(canvas, font, second_departure_etd.x_position, second_departure_etd.y_position, white, second_departure_etd.text.c_str());
+    } else {
+        rgb_matrix::DrawText(canvas, font, 0, third_departure.y_position, white, third_departure.text.c_str());
+        rgb_matrix::DrawText(canvas, font, third_departure_etd.x_position, third_departure_etd.y_position, white, third_departure_etd.text.c_str());
     }
+    
+    // Draw fourth line
+    
+    if (fourth_row_state == LOCATION) { // Show the location
+        rgb_matrix::DrawText(canvas, font, location_name_text.x_position, location_name_text.y_position, white, location_name_text.text.c_str());
+    } else { // Scroll the message
+        renderScrollingMessage();
+    }
+    
+    // Update and draw the clock
+    updateClockDisplay();
+    
+    // Clear the area where the clock will be displayed.  Note the '-2' is applied to the x position to give a small gap between the clock and the scrolling message
+    for (x = clock_display_text.x_position - 2; x < matrix_width; x++) {
+        for ( y = clock_display_text.y_position - font_baseline; y < clock_display_text.y_position + font_height - font_baseline; y++) {
+            if (y >= 0 && y < matrix_height && x >= 0 && x < matrix_width) {
+                canvas->SetPixel(x, y, black.r, black.g, black.b);
+            }
+        }
+    }
+    // Draw the clock
+    rgb_matrix::DrawText(canvas, font, clock_display_text.x_position, clock_display_text.y_position, white, clock_display_text.text.c_str());
 
     // Update display
     canvas = matrix->SwapOnVSync(canvas);
 }
 
-void TrainServiceDisplay::renderScrollingText(const std::string& text, int scroll_x, int text_width, int y_position) {
-    // Draw the scrolling text as normal
-    rgb_matrix::DrawText(canvas, font, scroll_x, y_position, white, text.c_str());
-    if (scroll_x < 0) {
-        rgb_matrix::DrawText(canvas, font, scroll_x + matrix_width + text_width, 
-                           y_position, white, text.c_str());
+void TrainServiceDisplay::renderScrollingCallingPoints() {
+    rgb_matrix::DrawText(canvas, font, calling_points_text.x_position, calling_points_text.y_position, white, calling_points_text.text.c_str());
+    if (calling_points_text.x_position < 0) {
+        rgb_matrix::DrawText(canvas, font, calling_points_text.x_position + matrix_width + calling_points_text.width, calling_points_text.y_position, white, calling_points_text.text.c_str());
     }
     
-    // If this is the calling points line, add "Calling at:" at the beginning
-    if (y_position == second_line_y) {
-        // Clear the area where "Calling at:" will be displayed by drawing a black rectangle
-        for (int x = 0; x < calling_at_width; x++) {
-            for (int y = y_position - font.baseline(); y < y_position + font.height() - font.baseline(); y++) {
-                if (y >= 0 && y < matrix->height() && x >= 0 && x < matrix->width()) {
-                    canvas->SetPixel(x, y, black.r, black.g, black.b);
-                }
+    // Clear the area where "Calling at:" will be displayed by drawing a black rectangle
+    for (int x = 0; x < calling_at_text.width; x++) {
+        for (int y = calling_at_text.y_position - font_baseline; y < calling_at_text.y_position + font_height - font_baseline; y++) {
+            if (y >= 0 && y < matrix_height && x >= 0 && x < matrix_width) {
+                canvas->SetPixel(x, y, black.r, black.g, black.b);
             }
         }
-        
-        // Draw "Calling at:" text
-        rgb_matrix::DrawText(canvas, font, 0, y_position, white, "Calling at:");
     }
-    
-    // If this is the message line, add clock at the right side
-    if (y_position == fourth_line_y && fourth_row_state == MESSAGE) {
-        // Update clock display
-        updateClockDisplay();
-        
-        // Calculate clock width and position
-        int clock_width = calculateTextWidth(clock_display) ;
-        int x_position = matrix_width - clock_width;
-        
-        // Clear the area where the clock will be displayed
-        for (int x = x_position; x < matrix_width; x++) {
-            for (int y = y_position - font.baseline(); y < y_position + font.height() - font.baseline(); y++) {
-                if (y >= 0 && y < matrix->height() && x >= 0 && x < matrix->width()) {
-                    canvas->SetPixel(x, y, black.r, black.g, black.b);
-                }
-            }
-        }
-        
-        // Draw the right-justified clock
-        rgb_matrix::DrawText(canvas, font, x_position, y_position, white, clock_display.c_str());
+    // Draw "Calling at:" text
+    rgb_matrix::DrawText(canvas, font, 0, calling_at_text.y_position, white, calling_at_text.text.c_str());
+}
+
+void TrainServiceDisplay::renderScrollingMessage() {
+    rgb_matrix::DrawText(canvas, font, nrcc_message_text.x_position, nrcc_message_text.y_position, white, nrcc_message_text.text.c_str());
+    if (nrcc_message_text.x_position < 0) {
+        rgb_matrix::DrawText(canvas, font, nrcc_message_text.x_position + matrix_width + nrcc_message_text.width, nrcc_message_text.y_position, white, nrcc_message_text.text.c_str());
     }
 }
 
 
 void TrainServiceDisplay::updateScrollPositions() {
-    // Update calling points scroll position with wrap-around
-    scroll_x_calling_points--;
-    if (scroll_x_calling_points < -calling_points_width) {
-        scroll_x_calling_points = matrix_width;
+    // Update calling points scroll position with wrap-around if the width of the calling points exceed available space.
+    // scroll_calling_points is set in the updateDisplayContent method
+    if (scroll_calling_points) {
+        calling_points_text-- ;
+        if (calling_points_text.x_position < -calling_points_text.width) {
+            calling_points_text.x_position = matrix_width;
+        }
+    } else {calling_points_text.x_position = calling_at_text.width + 2;
+        
     }
-}
-
-void TrainServiceDisplay::updateMessageScroll() {
-    // Update message scroll position
-    scroll_x_message--;
-    
-    // Check if a complete message scroll cycle has occurred
-    if (scroll_x_message <= -message_width) {
-        // Reset scroll position for a smooth continuous scroll
-        scroll_x_message = matrix_width;
-        // Mark that we've completed at least one full scroll
-        message_scroll_complete = true;
+    //Update the message scroll position and set the complete flag once that's done.
+    nrcc_message_text-- ;
+    if (nrcc_message_text.x_position < -nrcc_message_text.width) {
+        nrcc_message_text.x_position = matrix_width;
+        message_scroll_complete = true; // Required to enable the toggle to Location (if set)
     }
 }
 
@@ -409,19 +446,18 @@ void TrainServiceDisplay::checkFourthRowStateTransition() {
     bool should_toggle = false;
     
     if (!show_messages || !has_message) {
-        // If messages are disabled or there aren't any, always show the clock
-        fourth_row_state = CLOCK;
+        // If messages are disabled or there aren't any, always show the location
+        fourth_row_state = LOCATION;
         return;
     }
     
     if (fourth_row_state == MESSAGE) {
         // If we're showing a message, only toggle when scrolling is complete
-        if (message_scroll_complete && 
-            now - last_fourth_row_toggle >= std::chrono::seconds(Message_Refresh_interval)) {
+        if (message_scroll_complete && now - last_fourth_row_toggle >= std::chrono::seconds(Message_Refresh_interval)) {
             should_toggle = true;
         }
     } else {
-        // For clock, toggle based on timer
+        // For location, toggle based on timer
         if (now - last_fourth_row_toggle >= std::chrono::seconds(Message_Refresh_interval)) {
             should_toggle = true;
         }
@@ -445,23 +481,26 @@ void TrainServiceDisplay::transitionThirdRowState() {
 
 void TrainServiceDisplay::transitionFourthRowState() {
     if (has_message) {
-        // Toggle between clock and message
-        if (fourth_row_state == CLOCK) {
+        // Toggle between location and message
+        if (fourth_row_state == LOCATION) {
             fourth_row_state = MESSAGE;
             // Reset message scroll position and completion flag
-            scroll_x_message = matrix_width;
+            nrcc_message_text.x_position = matrix_width;
             message_scroll_complete = false;
         } else { // MESSAGE
-            fourth_row_state = CLOCK;
+            fourth_row_state = LOCATION;
         }
     } else {
         // If no message, always show clock
-        fourth_row_state = CLOCK;
+        fourth_row_state = LOCATION;
     }
 }
 
 void TrainServiceDisplay::refreshData() {
     // If a refresh is already pending, don't start another one
+    DEBUG_PRINT("-----------------------");
+    DEBUG_PRINT("Attempting to start background API refresh.");
+    DEBUG_PRINT("Current API version: " << getCurrentAPIVersion() << ". Display version: " << getCurrentDisplayVersion() << ". Cache version: " << parser.getCurrentVersion());
     if (data_refresh_pending.load()) {
         return;
     }
@@ -491,7 +530,7 @@ void TrainServiceDisplay::refreshData() {
             data_refresh_pending.store(false);
             api_data_version.fetch_add(1, std::memory_order_release);
             
-            DEBUG_PRINT("API data refresh completed in background thread. API Data version: " << getCurrentAPIVersion() << ". Display data version: " << getCurrentDisplayVersion());
+            DEBUG_PRINT("Background API refresh completed. API version: " << getCurrentAPIVersion() << ". Display version: " << getCurrentDisplayVersion() << ". Cache version: " << parser.getCurrentVersion());
         } catch (const std::exception& e) {
             std::cerr << "Error refreshing data in background thread: " << e.what() << std::endl;
             data_refresh_pending.store(false);
@@ -517,6 +556,7 @@ void TrainServiceDisplay::run() {
             // Check if a data refresh has completed
             if (data_refresh_completed.load()) {
                 // Apply the new data to the parser and update display
+                DEBUG_PRINT("API refresh complete - updating cached data.");
                 std::string api_data;
                 {
                     std::lock_guard<std::mutex> lock(api_data_mutex);
@@ -531,7 +571,7 @@ void TrainServiceDisplay::run() {
                 data_refresh_completed.store(false);
                 display_data_version.fetch_add(1, std::memory_order_release);
                 
-                DEBUG_PRINT("Applied new API data to display. API Data version: " << getCurrentAPIVersion() << ". Display data version: " << getCurrentDisplayVersion());
+                DEBUG_PRINT("Cache refreshed and display updated. API version: " << getCurrentAPIVersion() << ". Display version: " << getCurrentDisplayVersion() << ". Cache version: " << parser.getCurrentVersion());
             }
             
             // Remainder of the run method

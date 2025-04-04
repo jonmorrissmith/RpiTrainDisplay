@@ -172,6 +172,30 @@ int main(int argc, char* argv[]) {
 
      parser.updateData(data);
 
+    // Functions to test
+    //
+    // void setShowCallingPointETD(bool show);
+    // void setSelectedPlatform(const std::string& platform);
+    // void unsetSelectedPlatform();
+    // void findServices();
+    // bool isCancelled(size_t serviceIndex);
+    // bool isDelayed(size_t serviceIndex);
+    // size_t getNumberOfServices();
+    // size_t getFirstDeparture();
+    // size_t getSecondDeparture();
+    // size_t getThirdDeparture();
+    // std::string getScheduledDepartureTime(size_t serviceIndex);
+    // std::string getEstimatedDepartureTime(size_t serviceIndex);
+    // std::string getPlatform(size_t serviceIndex);
+    // std::string getDestination(size_t serviceIndex);
+    // std::string getCallingPoints(size_t serviceIndex);
+    // std::string getCoaches(size_t serviceIndex, bool addText);
+    // std::string getOperator(size_t serviceIndex);
+    // std::string getNrccMessages();
+    // std::string getDelayReason(size_t serviceIndex);
+    // std::string getCancelReason(size_t serviceIndex);
+    // std::string getadhocAlerts(size_t serviceIndex);
+
     num_services = parser.getNumberOfServices();
     std::cout << "Number of Services: " << num_services << std::endl;;
 
@@ -245,42 +269,8 @@ int main(int argc, char* argv[]) {
     
     std::cout << "==========================================================" << std::endl;
     std::cout << "====================== Location ==========================" << std::endl;
-    std::cout << parser.getLocationName() << std::endl;
+    std::cout << parser.getLocationName() << std::endl << std::endl;
     
-    std::cout << "==========================================================" << std::endl;
-    std::cout << "================== Data Structures =======================" << std::endl;
-    std::cout << "Version: " << parser.getCurrentVersion() << std::endl;
-    std::cout << "-------" << std::endl;
-    for (i=0; i< num_services; i++) {
-        std::cout << "===> Service " << i << "<===" << std::endl;
-        parser.debugPrintServiceStruct(i);
-        std::cout << std::endl;
-    }
-    
-    std::cout << "==========================================================" << std::endl;
-    std::cout << "================ getBasicServiceInfo =====================" << std::endl;
-    // Returns destination, std, etd, platform, coaches, operator.
-    {
-        std::string getdestination, getstd, getetd, getplatform, getcoaches, getoperator;
-        bool getcancelled;
-        std::tuple<std::string, std::string, std::string, std::string, std::string, std::string, bool> BasicServiceInfo;
-        
-        for (i=0; i< num_services; i++) {
-            std::cout << "===> Service " << i << "<===" << std::endl;
-            
-            BasicServiceInfo = parser.getBasicServiceInfo(i);
-            getdestination = std::get<0>(BasicServiceInfo);
-            getstd = std::get<1>(BasicServiceInfo);
-            getetd = std::get<2>(BasicServiceInfo);
-            getplatform = std::get<3>(BasicServiceInfo);
-            getcoaches = std::get<4>(BasicServiceInfo);
-            getoperator = std::get<5>(BasicServiceInfo);
-            getcancelled = std::get<6>(BasicServiceInfo);
-            
-            std::cout << "Destination: " << getdestination << ", std: " << getstd << ", etd: " << getetd << ", platform: " << getplatform << ", coaches: " << getcoaches << ", operator: " << getoperator << ", cancelled: " << getcancelled << std::endl;
-        }
-        
-    }
-        
      return 0;
  }
+

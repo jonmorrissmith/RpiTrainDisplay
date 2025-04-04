@@ -18,6 +18,7 @@ TARGET = traindisplay
 # Source files (in Src directory)
 SOURCES = $(SRCDIR)/api_client.cpp \
           $(SRCDIR)/config.cpp \
+          $(SRCDIR)/display_text.cpp \
           $(SRCDIR)/traindisplay.cpp \
           $(SRCDIR)/train_service_display.cpp \
           $(SRCDIR)/train_service_parser.cpp
@@ -39,7 +40,7 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 # Special targets for testing
-parser_test: $(OBJDIR)/parser_test.o $(OBJDIR)/train_service_parser.o $(OBJDIR)/api_client.o $(OBJDIR)/config.o
+parser_test: $(OBJDIR)/parser_test.o $(OBJDIR)/train_service_parser.o $(OBJDIR)/api_client.o $(OBJDIR)/config.o $(OBJDIR)/display_text.o
 	$(CXX) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
 $(OBJDIR)/parser_test.o: $(SRCDIR)/parser_test.cpp
