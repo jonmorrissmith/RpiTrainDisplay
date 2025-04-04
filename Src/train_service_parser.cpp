@@ -327,7 +327,8 @@ void TrainServiceParser::createOrderedDepartureList() {
             time_list[i] = td_time;
         }
         
-        if (debug_mode) {
+        // Uncomment the next code block for a dump of the unsorted departure times 
+        /* if (debug_mode) {
             DEBUG_PRINT("----- list of departure times -----");
             for (size_t i = 0; i < number_of_services; i++) {
                 // Format time as HH:MM for easier reading
@@ -346,7 +347,9 @@ void TrainServiceParser::createOrderedDepartureList() {
             if (number_of_services == 0) {
                 DEBUG_PRINT("No train services available");
             }
-        }
+        } */
+
+
         
         // Initialize ETDOrderedList for actual number of services
         for (size_t i = 0; i < number_of_services; i++) {
@@ -508,11 +511,18 @@ std::string TrainServiceParser::getCallingPoints(size_t serviceIndex) {
         const auto& service = data["trainServices"][serviceIndex];
         const auto& callingPoints = service["subsequentCallingPoints"][0]["callingPoint"];
         
+        // There are no calling points then set output appropriately,
+        if ( callingPoints.size() == 0) {
+            Services[serviceIndex].callingPoints_with_ETD = "No calling points available";
+            Services[serviceIndex].callingPoints = "No calling points available";
+            return "No calling points available";
+        }
+        
         // If we're showing calling points, return the stored parsed calling points
         
-        // Return calling points with the Time of Departure
+        // Return calling points with the Time of Departures is we're showing the time of departure from each calling point.
         if (showCallingPointETD) {
-            // Check if we have this stored - generate the content and store it if we don't
+            // Check if we have this stored already - generate the content and store it if we don't
             if(Services[serviceIndex].callingPoints_with_ETD == "") {
                 std::stringstream ss;
                 for (size_t i = 0; i < callingPoints.size(); ++i) {
@@ -613,7 +623,7 @@ std::tuple<std::string, std::string, std::string, std::string, std::string, std:
                                );
     }
     catch (const json::exception& e) {
-        throw std::runtime_error("Error getting Departure Time: " + std::string(e.what()));
+        throw std::runtime_error("Error getting Tuple of destination, std, etd, platform, coaches, operator, cancelled: " + std::string(e.what()));
     }
 }
 
@@ -626,7 +636,7 @@ std::string TrainServiceParser::getScheduledDepartureTime(size_t serviceIndex) {
         }
         return Services[serviceIndex].scheduledTime;
     } catch (const json::exception& e) {
-        throw std::runtime_error("Error getting Departure Time: " + std::string(e.what()));
+        throw std::runtime_error("Error getting Scheduled Departure Time: " + std::string(e.what()));
     }
 }
 
@@ -640,7 +650,7 @@ std::string TrainServiceParser::getEstimatedDepartureTime(size_t serviceIndex) {
         }
         return Services[serviceIndex].estimatedTime;
     } catch (const json::exception& e) {
-        throw std::runtime_error("Error getting EstimatedDeparture Time: " + std::string(e.what()));
+        throw std::runtime_error("Error getting Estimated Departure Time: " + std::string(e.what()));
     }
 }
 

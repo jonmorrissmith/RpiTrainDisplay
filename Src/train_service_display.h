@@ -25,6 +25,7 @@
 #include "config.h"
 #include "api_client.h"
 #include "train_service_parser.h"
+#include "display_text.h"
 
 using namespace rgb_matrix;
 
@@ -38,6 +39,11 @@ private:
     RGBMatrix* matrix;     // The RGB matrix object
     FrameCanvas* canvas;   // Matrix canvas for creating content to display
     Font font;             // Font
+    FontCache font_cache;  // Cache of font sizes
+    int font_baseline;     // Baseline size of the font
+    int font_height;       // Height of the font
+    int matrix_width;      // Width of the matrix
+    int matrix_height;     // Height of the matrix
     
     // Colors
     Color white;
@@ -52,18 +58,23 @@ private:
     // Display state
     enum FirstRowState { ETD, COACHES };               // Toggle to show the Estimated Time of Departure or Coaches on the 1st line
     enum ThirdRowState { SECOND_TRAIN, THIRD_TRAIN };  // Toggle to show 2nd or 3rd train on the 3rd line
-    enum FourthRowState { CLOCK, MESSAGE };            // Toggle to show the Clock alone or the Clock and message on the 4th line
+    enum FourthRowState { LOCATION, MESSAGE };         // Toggle to show the Clock alone or the Clock and message on the 4th line
     
     // Display content
-    std::string top_line;              // 1st departure
-    std::string top_line_coaches;      // 1st departure - number of coaches
-    std::string calling_points;        // 1st departure - calling points
-    std::string second_line;           // Calling points
-    std::string third_line;            // Toggle between 2nd and 3rd departure
-    std::string clock_display;         // The clock
-    std::string nrcc_message;          // Network Rail messages
-    std::string location_name;         // Location name for the departure board
-
+    DisplayText first_departure;
+    DisplayText first_departure_coaches;
+    DisplayText first_departure_etd;
+    DisplayText calling_points_text;
+    DisplayText calling_at_text;
+    DisplayText second_departure;
+    DisplayText second_departure_etd;
+    DisplayText third_departure;
+    DisplayText third_departure_etd;
+    DisplayText clock_display_text;
+    DisplayText nrcc_message_text;
+    DisplayText location_name_text;
+    
+    // Display options
     bool show_platforms;               // Yes/No - show platforms
     bool show_location;                // Yes/No - show location
     bool platform_selected;            // Yes/No - has a specific platform been selected
@@ -71,35 +82,20 @@ private:
     bool has_message;                  // Yes/No - are there messages
     bool show_messages;                // Yes/No - are messages being shown
     bool message_scroll_complete;      // Yes/No - has the message been shown
+    int space_for_calling_points;      // How much space there is to display the calling points
+    bool scroll_calling_points;        // Yes/No - this is 'true' if the calling points exceed the width of the screen
 
     size_t num_services;               // The number of services available
-    
-    std::tuple<std::string, std::string, std::string, std::string, std::string, std::string> first_service;
     
     // Service Data
     TrainServiceParser::TrainServiceInfo first_service_info;       // Full Service data for the first departure
     TrainServiceParser::TrainServiceInfo second_service_info;      // Full Service data for the second departure
     TrainServiceParser::TrainServiceInfo third_service_info;       // Full Service data for the third departure
     
-    // Display positions - self explanatory
-    int first_line_y;
-    int second_line_y;
-    int third_line_y;
-    int fourth_line_y;
-    int matrix_width;
-    int calling_points_width;
-    int calling_at_width;
-    int message_width;
-    int coach_etd_width;
-    int coach_etd_position;
-    int location_x_position;
-    
-    // Scroll positions - self explanatory
-    int scroll_x_calling_points;
-    int scroll_x_message;
-    
     // State - for toggle on the 1st, 3rd and 4th row and API refresh interval
-    size_t first_service_index;                                      // First row - Index of the departure
+    size_t first_service_index;                                      // First departure - Index of the departure
+    size_t second_service_index;                                     // Second departure - Index of the departure
+    size_t third_service_index;                                      // Third departure - Index of the departure
     FirstRowState first_row_state;                                   // First row - ETD-Coaches
     ThirdRowState third_row_state;                                   // Third row - 2nd-3rd departure
     FourthRowState fourth_row_state;                                 // Fourth row - Message-Location/blank
@@ -118,9 +114,9 @@ private:
     void renderFrame();                    // Render the data into the matrix display
 
     // Scrolling functions
-    void renderScrollingText(const std::string& text, int scroll_x, int text_width, int y_position);
+    void renderScrollingCallingPoints();
+    void renderScrollingMessage();
     void updateScrollPositions();
-    void updateMessageScroll();
 
     // Toggles for display data
     void checkFirstRowStateTransition();   // ETD-Coaches
@@ -132,9 +128,6 @@ private:
 
     // Clock display
     void updateClockDisplay();             // Update the clock
-
-    void calculateTextWidths();
-    int calculateTextWidth(const std::string& text);
 
     // For background refresh of API data - this to avoid the display pausing while data refreshes
     std::thread api_thread;                        // Thread for API calls
