@@ -51,6 +51,7 @@ public:
         std::string cancelReason;
         std::string delayReason;
         std::string adhocAlerts;
+        std::string serviceID;
     };
     
     uint64_t getCurrentVersion() const {                         // Return current version of data
@@ -93,6 +94,7 @@ public:
     std::string getDelayReason(size_t serviceIndex);             // Return the delay reason for the selected service
     std::string getCancelReason(size_t serviceIndex);            // Return the cancellation reason time for the selected service
     std::string getadhocAlerts(size_t serviceIndex);             // Return any adhoc alerts for the selected service
+    std::string getserviceID(size_t serviceIndex);               // Return the serviceID for the selected service
     
 private:
     // Helper method to strip HTML tags from text

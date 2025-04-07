@@ -46,9 +46,46 @@ white(255, 255, 255), black(0, 0, 0)
     matrix_height = m->height();
     canvas = m->CreateFrameCanvas();
     
+    // Initialize text y positions
+    first_departure.y_position = config.getInt("first_line_y");
+    first_departure_coaches.y_position = config.getInt("first_line_y");
+    first_departure_etd.y_position = config.getInt("first_line_y");
+    
+    calling_points_text.y_position = config.getInt("second_line_y");
+    calling_at_text.y_position = config.getInt("second_line_y");
+    
+    second_departure.y_position = config.getInt("third_line_y");
+    second_departure_etd.y_position = config.getInt("third_line_y");
+    third_departure.y_position= config.getInt("third_line_y");
+    third_departure_etd.y_position= config.getInt("third_line_y");
+    
+    clock_display_text.y_position = config.getInt("fourth_line_y");
+    nrcc_message_text.y_position = config.getInt("fourth_line_y");
+    location_name_text.y_position = config.getInt("fourth_line_y");
+    
+    // Set parser options from config
+    // Are calling points ETD's being shown?
+    parser.setShowCallingPointETD(config.getBool("ShowCallingPointETD"));
+    
+    // Has a platform been selected?
+    if(!config.get("platform").empty()){
+        parser.setSelectedPlatform(config.get("platform"));
+    }
+    
+    // Get location name
+    location_name_text = "";
+    // If we're showing the location then get the width and calculate the x position to centre on the display
+    if (show_location) {
+        location_name_text.setTextAndWidth(parser.getLocationName(), font_cache);
+        location_name_text.x_position = (matrix_width - location_name_text.width)/2;
+    }
+    
     // Initialise scrolling positions
+    // Initialize scrolling-text x positions to the far right of the display
     calling_points_text.x_position = matrix_width;
     nrcc_message_text.x_position = matrix_width;
+    // Initialise 2nd/3rd departure baseline (this is a vertical scroll)
+    baseline_2nd_3rd_departure_scroll = second_departure.y_position;
     
     // Store the amount of space available to display the calling points;
     // Width of 'Calling at:' never changes
@@ -64,38 +101,21 @@ white(255, 255, 255), black(0, 0, 0)
     data_refresh_pending = false;
     data_refresh_completed = false;
     
+    // Initialise display toggle states
+    refresh_first_departure = true;
+    refresh_2nd_3rd_departure = true;
+    refresh_location = true;
+    scroll_2nd_3rd_departures = false; // only scroll when the toggle between 2nd and 3rd departure happens (not in use right now)
+    refresh_first_departure_etd_coaches_first_pass_complete = false;
+    refresh_whole_display = true;
+    refresh_whole_display_first_pass_complete = false;
+    refresh_whole_display_second_pass_complete = false;
+    
     // Initialize toggle timestamps
     last_first_row_toggle = std::chrono::steady_clock::now();
     last_third_row_toggle = std::chrono::steady_clock::now();
     last_fourth_row_toggle = std::chrono::steady_clock::now();
     last_refresh = std::chrono::steady_clock::now();
-    
-    // Initialize text y positions
-    first_departure.y_position = config.getInt("first_line_y");
-    first_departure_coaches.y_position = config.getInt("first_line_y");
-    first_departure_etd.y_position = config.getInt("first_line_y");
-    calling_points_text.y_position = config.getInt("second_line_y");
-    calling_at_text.y_position = config.getInt("second_line_y");
-    second_departure.y_position = config.getInt("third_line_y");
-    second_departure_etd.y_position = config.getInt("third_line_y");
-    third_departure.y_position= config.getInt("third_line_y");
-    third_departure_etd.y_position= config.getInt("third_line_y");
-    clock_display_text.y_position = config.getInt("fourth_line_y");
-    nrcc_message_text.y_position = config.getInt("fourth_line_y");
-    location_name_text.y_position = config.getInt("fourth_line_y");
-    
-    // Initialize text x positions
-    calling_points_text.x_position = matrix_width;
-    nrcc_message_text.x_position = matrix_width;
-    
-    // Set parser options from config
-    // Are calling points ETD's being shown?
-    parser.setShowCallingPointETD(config.getBool("ShowCallingPointETD"));
-    
-    // Has a platform been selected?
-    if(!config.get("platform").empty()){
-        parser.setSelectedPlatform(config.get("platform"));
-    }
     
     DEBUG_PRINT("Display initialisation. font: " << config.get("fontPath") << std::endl <<
                 "Selected platform (bool/platform): " << selected_platform << "/" << platform_selected << std::endl <<
@@ -153,15 +173,6 @@ void TrainServiceDisplay::updateDisplayContent() {
         // Find Services
         parser.findServices();
         
-        // Get location name
-        location_name_text = "";
- 
-        // If we're showing the location then get the width and calculate the x position to centre on the display
-        if (show_location) {
-            location_name_text.setTextAndWidth(parser.getLocationName(), font_cache);
-            location_name_text.x_position = (matrix_width - location_name_text.width)/2;
-        }
-        
         // Create the Top Line - get the index of the first service to depart.
         first_service_index = parser.getFirstDeparture();
         
@@ -199,7 +210,6 @@ void TrainServiceDisplay::updateDisplayContent() {
             first_departure_coaches.x_position = matrix_width - first_departure_coaches.width;
             
             // Create calling points
-            calling_at_text = "Calling at:";
             calling_points_text = "";
             if(first_service_info.isCancelled) {
                 calling_points_text << first_service_info.cancelReason;
@@ -213,8 +223,11 @@ void TrainServiceDisplay::updateDisplayContent() {
                     calling_points_text << " - " << first_service_info.delayReason;
                 }
             }
-            //DEBUG_PRINT("-----------------------");
-            //if (debug_mode)  parser.debugPrintServiceStruct(first_service_index);
+            
+            calling_points_text.setWidth(font_cache);
+            // If the width of the calling points is less than the width of the space for the calling points, then don't scroll.
+            scroll_calling_points = (calling_points_text.width < space_for_calling_points ? false : true);
+            
             DEBUG_PRINT("Display Content update:" << std::endl <<
                         "First Departure:" << first_departure.text << std::endl <<
                         "Calling Points: " << calling_points_text.text << " (width of the scroll: " << calling_points_text.width << ")" );
@@ -289,10 +302,11 @@ void TrainServiceDisplay::updateDisplayContent() {
         }
         
         // Calculate text widths for scrolling
-        calling_points_text.setWidth(font_cache);
-        // If the width of the calling points is less than the width of the space for the calling points, then don't scroll.
-        scroll_calling_points = (calling_points_text.width < space_for_calling_points ? false : true);
         nrcc_message_text.setWidth(font_cache);
+        
+        // Set refresh flag to trigger display update
+        DEBUG_PRINT ("Setting the flag to refresh the display");
+        refresh_whole_display = true;
         
     } catch (const std::exception& e) {
         DEBUG_PRINT("Error updating display content: " << e.what());
@@ -320,80 +334,177 @@ void TrainServiceDisplay::updateClockDisplay() {
     clock_display_text.x_position = matrix_width - clock_display_text.width;
 }
 
+void TrainServiceDisplay::clearArea(int x_origin, int y_origin, int x_size, int y_size) {
+    int x,y;
+    
+    for (x = x_origin; x < x_size; x++) {
+        for ( y = y_origin; y < y_size; y++) {
+            if (y >= 0 && y < matrix_height && x >= 0 && x < matrix_width) {
+                canvas->SetPixel(x, y, black.r, black.g, black.b);
+            }
+        }
+    }
+}
+
 void TrainServiceDisplay::renderFrame() {
-    canvas->Clear();
-    int x, y;
+    if (refresh_whole_display) {
+        if (refresh_whole_display_first_pass_complete && refresh_whole_display_second_pass_complete) {
+            //This is a new refresh
+            refresh_whole_display_first_pass_complete = false;
+            refresh_whole_display_second_pass_complete = false;
+        }        
+        // Clear the Canvas and trigger refresh of all static elements
+        canvas->Clear();
+        refresh_first_departure = true;
+        refresh_first_departure_etd_coaches = true;
+        // Disabling this for now as the vertical scroll is resource hungry
+        //if(!scroll_2nd_3rd_departures) { // Don't interrupt a scroll of the 2nd/3rd departures
+        //    refresh_2nd_3rd_departure = true;
+        //    offset_2nd_3rd_departure_scroll = font_height;
+        //}
+        // When we can put the vertical scroll back in, comment out the next line
+        refresh_2nd_3rd_departure = true;
+        refresh_location = true;
+    }
     
     // Draw static top line
-    rgb_matrix::DrawText(canvas, font, 0, first_departure.y_position, white, first_departure.text.c_str());
+    if (refresh_first_departure == true) {
+        rgb_matrix::DrawText(canvas, font, 0, first_departure.y_position, white, first_departure.text.c_str());
+        refresh_first_departure = false;
+    }
     
     // Draw right-justified ETD or Coach configuration for the first service if the first service exists
     if(first_service_index != 999) {
-        
-        if (first_row_state == ETD) {
-            rgb_matrix::DrawText(canvas, font, first_departure_etd.x_position, first_departure_etd.y_position, white, first_departure_etd.text.c_str());
-        } else {
-            rgb_matrix::DrawText(canvas, font, first_departure_coaches.x_position, first_departure_coaches.y_position, white, first_departure_coaches.text.c_str());
+        if (refresh_first_departure_etd_coaches) {
+            if (first_row_state == ETD) {
+                rgb_matrix::DrawText(canvas, font, first_departure_etd.x_position, first_departure_etd.y_position, white, first_departure_etd.text.c_str());
+            } else {
+                rgb_matrix::DrawText(canvas, font, first_departure_coaches.x_position, first_departure_coaches.y_position, white, first_departure_coaches.text.c_str());
+            }
+            if(!refresh_first_departure_etd_coaches_first_pass_complete) {
+                refresh_first_departure_etd_coaches_first_pass_complete = true;
+            } else {
+                refresh_first_departure_etd_coaches = false;
+            }
         }
     }
+    
     
     // Draw scrolling calling points with wrap-around
     renderScrollingCallingPoints();
     
-    // Draw current third line content based on state
-    if (third_row_state == SECOND_TRAIN) {
-        rgb_matrix::DrawText(canvas, font, 0, second_departure.y_position, white, second_departure.text.c_str());
-        rgb_matrix::DrawText(canvas, font, second_departure_etd.x_position, second_departure_etd.y_position, white, second_departure_etd.text.c_str());
-    } else {
-        rgb_matrix::DrawText(canvas, font, 0, third_departure.y_position, white, third_departure.text.c_str());
-        rgb_matrix::DrawText(canvas, font, third_departure_etd.x_position, third_departure_etd.y_position, white, third_departure_etd.text.c_str());
+    // Draw current third line content
+    
+    // This condition is modified if scrolling is enabled.  Needed to stop a refresh if a scroll is in progress
+    //if (refresh_2nd_3rd_departure && !scroll_2nd_3rd_departures) {
+    
+    if (refresh_2nd_3rd_departure) {
+        // Clear the whole area
+        clearArea(0, second_departure.y_position, matrix_width, second_departure.y_position + font_height - font_baseline);
+        
+        // Now display 2nd/3rd departure and the ETD
+        if (third_row_state == SECOND_TRAIN) {
+            rgb_matrix::DrawText(canvas, font, 0, second_departure.y_position, white, second_departure.text.c_str());
+            rgb_matrix::DrawText(canvas, font, second_departure_etd.x_position, second_departure_etd.y_position, white, second_departure_etd.text.c_str());
+        } else {
+            rgb_matrix::DrawText(canvas, font, 0, third_departure.y_position, white, third_departure.text.c_str());
+            rgb_matrix::DrawText(canvas, font, third_departure_etd.x_position, third_departure_etd.y_position, white, third_departure_etd.text.c_str());
+        }
+        refresh_2nd_3rd_departure = false;
     }
     
+    // Disabling this for the timebeing.
+    // It looks great but slows the horizontal scrolls (messages/calling-points) when it runs as it's rather resource-hungry.
+    // I sense the processing limits of the Pi4 are being reached!
+    // If a scroll has been initiated by a change from showing 2nd and 3rd departures.
+    //if (scroll_2nd_3rd_departures) {
+    //    // Clear across the display from scroll baseline to the bottom of the display
+    //    clearArea(0, baseline_2nd_3rd_departure_scroll - font_baseline, matrix_width, matrix_height);
+    //
+    //    // Display the 2nd/3rd departure text, offset by offset_2nd_3rd_departure_scroll
+    //    if (offset_2nd_3rd_departure_scroll > -1) {
+    //        if (third_row_state == SECOND_TRAIN) {
+    //            rgb_matrix::DrawText(canvas, font, 0, second_departure.y_position + offset_2nd_3rd_departure_scroll, white, second_departure.text.c_str());
+    //            rgb_matrix::DrawText(canvas, font, second_departure_etd.x_position, second_departure_etd.y_position + offset_2nd_3rd_departure_scroll, white, second_departure_etd.text.c_str());
+    //        } else {
+    //            rgb_matrix::DrawText(canvas, font, 0, third_departure.y_position + offset_2nd_3rd_departure_scroll, white, third_departure.text.c_str());
+    //            rgb_matrix::DrawText(canvas, font, third_departure_etd.x_position, third_departure_etd.y_position + offset_2nd_3rd_departure_scroll, white, third_departure_etd.text.c_str());
+    //        }
+    //    }
+    //    if (scroll_2nd_3rd_departures_first_pass){  // Ensures two passes to cater for canvas swap
+    //        scroll_2nd_3rd_departures_first_pass = false;
+    //    } else {
+    //        offset_2nd_3rd_departure_scroll --; // Once two passes have completed, decrease the scroll offset and initiate a first_pass
+    //       scroll_2nd_3rd_departures_first_pass = true;
+    //    }
+    //
+    //    if (scroll_2nd_3rd_departures_first_pass && offset_2nd_3rd_departure_scroll < 0) { // Scroll complete as scroll offset is < 0 (happens after 2nd pass at offset=0
+    //        scroll_2nd_3rd_departures = false;
+    //        refresh_2nd_3rd_departure = false;
+    //    }
+    //
+    //    if (fourth_row_state == LOCATION) refresh_location = true; // the vertical scroll method over-writes the 4th line. OK for scrolling but not when showing the static location, so need to trigger a redraw.
+    //}
+     
     // Draw fourth line
     
     if (fourth_row_state == LOCATION) { // Show the location
-        rgb_matrix::DrawText(canvas, font, location_name_text.x_position, location_name_text.y_position, white, location_name_text.text.c_str());
+        if (refresh_location) {
+            // Clear the whole line
+            clearArea(0, location_name_text.y_position - font_baseline, matrix_width, location_name_text.y_position + font_height - font_baseline);
+            // Display the location
+            rgb_matrix::DrawText(canvas, font, location_name_text.x_position, location_name_text.y_position, white, location_name_text.text.c_str());
+            // Prevent the location being displayed again
+            refresh_location = false;
+        }
     } else { // Scroll the message
         renderScrollingMessage();
+        // The flag to refresh the location text is set in the transitionFourthRowState method
     }
     
     // Update and draw the clock
     updateClockDisplay();
     
     // Clear the area where the clock will be displayed.  Note the '-2' is applied to the x position to give a small gap between the clock and the scrolling message
-    for (x = clock_display_text.x_position - 2; x < matrix_width; x++) {
-        for ( y = clock_display_text.y_position - font_baseline; y < clock_display_text.y_position + font_height - font_baseline; y++) {
-            if (y >= 0 && y < matrix_height && x >= 0 && x < matrix_width) {
-                canvas->SetPixel(x, y, black.r, black.g, black.b);
-            }
-        }
-    }
+    clearArea(clock_display_text.x_position - 2, clock_display_text.y_position - font_baseline, matrix_width, clock_display_text.y_position + font_height - font_baseline);
+    
     // Draw the clock
     rgb_matrix::DrawText(canvas, font, clock_display_text.x_position, clock_display_text.y_position, white, clock_display_text.text.c_str());
 
     // Update display
     canvas = matrix->SwapOnVSync(canvas);
+    
+    // Stop the whole display being cleared (by setting refresh_whole_display to false) until the next data refresh is triggered in the updateDisplayContent method.
+    // NOTE the refresh has to happen twice as the update works using SwapOnVSync
+    if (refresh_whole_display) {
+        if (refresh_whole_display_first_pass_complete) {
+            // we're on the second pass so mark that as complete and prevent further refreshes
+            refresh_whole_display_second_pass_complete = true;
+            refresh_whole_display = false;
+        } else {
+            // we're on the first pass so mark that as complete
+            refresh_whole_display_first_pass_complete = true;
+        }
+    }
 }
 
 void TrainServiceDisplay::renderScrollingCallingPoints() {
+    // Clear the scrolling text area
+    clearArea(calling_at_text.width, calling_points_text.y_position - font_baseline, matrix_width, calling_points_text.y_position + font_height - font_baseline);
+    
     rgb_matrix::DrawText(canvas, font, calling_points_text.x_position, calling_points_text.y_position, white, calling_points_text.text.c_str());
     if (calling_points_text.x_position < 0) {
         rgb_matrix::DrawText(canvas, font, calling_points_text.x_position + matrix_width + calling_points_text.width, calling_points_text.y_position, white, calling_points_text.text.c_str());
     }
     
     // Clear the area where "Calling at:" will be displayed by drawing a black rectangle
-    for (int x = 0; x < calling_at_text.width; x++) {
-        for (int y = calling_at_text.y_position - font_baseline; y < calling_at_text.y_position + font_height - font_baseline; y++) {
-            if (y >= 0 && y < matrix_height && x >= 0 && x < matrix_width) {
-                canvas->SetPixel(x, y, black.r, black.g, black.b);
-            }
-        }
-    }
+    clearArea(0, calling_at_text.y_position - font_baseline, calling_at_text.width, calling_at_text.y_position + font_height - font_baseline);
     // Draw "Calling at:" text
     rgb_matrix::DrawText(canvas, font, 0, calling_at_text.y_position, white, calling_at_text.text.c_str());
 }
 
 void TrainServiceDisplay::renderScrollingMessage() {
+    clearArea(0, nrcc_message_text.y_position - font_baseline, matrix_width, nrcc_message_text.y_position + font_height - font_baseline);
     rgb_matrix::DrawText(canvas, font, nrcc_message_text.x_position, nrcc_message_text.y_position, white, nrcc_message_text.text.c_str());
     if (nrcc_message_text.x_position < 0) {
         rgb_matrix::DrawText(canvas, font, nrcc_message_text.x_position + matrix_width + nrcc_message_text.width, nrcc_message_text.y_position, white, nrcc_message_text.text.c_str());
@@ -472,11 +583,17 @@ void TrainServiceDisplay::checkFourthRowStateTransition() {
 void TrainServiceDisplay::transitionFirstRowState() {
     // Simply toggle between ETD and Number of Coaches
     first_row_state = (first_row_state == COACHES ? ETD : COACHES);
+    refresh_whole_display = true;
+    refresh_first_departure_etd_coaches_first_pass_complete = false;
 }
 
 void TrainServiceDisplay::transitionThirdRowState() {
     // Simply toggle between 2nd and 3rd train only
     third_row_state = (third_row_state == SECOND_TRAIN) ? THIRD_TRAIN : SECOND_TRAIN;
+    refresh_whole_display = true;                    // Trigger a display refresh
+    scroll_2nd_3rd_departures = true;                // Trigger a scroll-up of the 2nd/3rd departure row
+    scroll_2nd_3rd_departures_first_pass = true;     // Reset to first-pass of the vertical scroll
+    offset_2nd_3rd_departure_scroll = font_height;   // Reset the scroll offset
 }
 
 void TrainServiceDisplay::transitionFourthRowState() {
@@ -489,6 +606,7 @@ void TrainServiceDisplay::transitionFourthRowState() {
             message_scroll_complete = false;
         } else { // MESSAGE
             fourth_row_state = LOCATION;
+            refresh_whole_display = true;
         }
     } else {
         // If no message, always show clock

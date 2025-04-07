@@ -60,7 +60,7 @@ private:
     enum ThirdRowState { SECOND_TRAIN, THIRD_TRAIN };  // Toggle to show 2nd or 3rd train on the 3rd line
     enum FourthRowState { LOCATION, MESSAGE };         // Toggle to show the Clock alone or the Clock and message on the 4th line
     
-    // Display content
+    // Text to be displayed - using the DisplayText class as this holds text, x/y position, width and data version
     DisplayText first_departure;
     DisplayText first_departure_coaches;
     DisplayText first_departure_etd;
@@ -74,6 +74,25 @@ private:
     DisplayText nrcc_message_text;
     DisplayText location_name_text;
     
+    // flags for refreshing display element
+    bool refresh_whole_display;                                     // Yes/No - do we need to refresh the whole display
+    bool refresh_whole_display_first_pass_complete;                 // Has the first whole-display refresh completed
+    bool refresh_whole_display_second_pass_complete;                // Has the second whole-display refresh completed
+    bool refresh_first_departure;                                   // Has the first departure refreshed
+    bool refresh_first_departure_etd_coaches;                       // Has the first departure ETD/Coach data refreshed
+    bool refresh_first_departure_etd_coaches_first_pass_complete;   // Has first departure ETD/Coach data 1st refresh completed
+    bool refresh_2nd_3rd_departure;                                 // Has the 2nd/3rd departure refreshed
+    bool refresh_location;                                          // Has the Location refreshed
+    
+    // Scrolling flags and variables
+    bool message_scroll_complete;                     // Yes/No - has the message been shown
+    int space_for_calling_points;                     // How much space there is to display the calling points
+    bool scroll_calling_points;                       // Yes/No - this is 'true' if the calling points exceed the width of the screen
+    int baseline_2nd_3rd_departure_scroll;            // The baseline for the 2nd/3rd departure scroll
+    int offset_2nd_3rd_departure_scroll;              // Offset for vertical-scroll of the 2nd/3rd departure
+    bool scroll_2nd_3rd_departures;                   // Trigger a vertical-scroll when the 2nd changes to the 3rd departure
+    bool scroll_2nd_3rd_departures_first_pass;        // Vertical-scroll needs to be rendered twice to accommodate canvas-swap
+    
     // Display options
     bool show_platforms;               // Yes/No - show platforms
     bool show_location;                // Yes/No - show location
@@ -81,16 +100,12 @@ private:
     std::string selected_platform;     // The selected platform
     bool has_message;                  // Yes/No - are there messages
     bool show_messages;                // Yes/No - are messages being shown
-    bool message_scroll_complete;      // Yes/No - has the message been shown
-    int space_for_calling_points;      // How much space there is to display the calling points
-    bool scroll_calling_points;        // Yes/No - this is 'true' if the calling points exceed the width of the screen
-
-    size_t num_services;               // The number of services available
     
     // Service Data
-    TrainServiceParser::TrainServiceInfo first_service_info;       // Full Service data for the first departure
-    TrainServiceParser::TrainServiceInfo second_service_info;      // Full Service data for the second departure
-    TrainServiceParser::TrainServiceInfo third_service_info;       // Full Service data for the third departure
+    size_t num_services;                                             // The number of services available
+    TrainServiceParser::TrainServiceInfo first_service_info;         // Full Service data for the first departure
+    TrainServiceParser::TrainServiceInfo second_service_info;        // Full Service data for the second departure
+    TrainServiceParser::TrainServiceInfo third_service_info;         // Full Service data for the third departure
     
     // State - for toggle on the 1st, 3rd and 4th row and API refresh interval
     size_t first_service_index;                                      // First departure - Index of the departure
@@ -109,9 +124,10 @@ private:
     std::chrono::steady_clock::time_point last_refresh;              // Data refresh
 
     // Helper methods
-    void refreshData();                    // get JSON departure data from the API
-    void updateDisplayContent();           // Create the content to be displayed
-    void renderFrame();                    // Render the data into the matrix display
+    void refreshData();                                                   // get JSON departure data from the API
+    void updateDisplayContent();                                          // Create the content to be displayed
+    void renderFrame();                                                   // Render the data into the matrix display
+    void clearArea(int x_origin, int y_origin, int x_size, int y_size);   // Clear an area on the matrix
 
     // Scrolling functions
     void renderScrollingCallingPoints();
