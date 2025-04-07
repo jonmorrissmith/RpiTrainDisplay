@@ -147,6 +147,7 @@ void TrainServiceParser::updateData(const std::string& jsonString) {
         // std::string cancelReason;
         // std::string delayReason;
         // std::string adhocAlerts;
+        // std::string serviceID;
         
         for (i=0; i< number_of_services; i++){
             // scheduledTime
@@ -240,6 +241,18 @@ void TrainServiceParser::updateData(const std::string& jsonString) {
             } else {
                 NewServiceInfo.adhocAlerts = "";
             }
+            
+            // serviceID
+            // If serviceID exists, is not null, and isn't empty
+            if (new_data["trainServices"][i].find("serviceID") != new_data["trainServices"][i].end() &&
+                !new_data["trainServices"][i]["serviceID"].is_null() &&
+                !new_data["trainServices"][i]["serviceID"].get<std::string>().empty()) {
+                NewServiceInfo.serviceID = new_data["trainServices"][i]["serviceID"].get<std::string>();
+            } else {
+                NewServiceInfo.serviceID = "";
+            }
+            
+            // Store the service data
             parsed_services.push_back(std::move(NewServiceInfo));
         }
         
@@ -744,6 +757,20 @@ std::string TrainServiceParser::getadhocAlerts(size_t serviceIndex){
         throw std::runtime_error("Error getting adhoc alerts: " + std::string(e.what()));
     }
 }
+
+std::string TrainServiceParser::getserviceID(size_t serviceIndex) {
+    std::lock_guard<std::mutex> lock(dataMutex);
+    
+    try {
+        if (serviceIndex >= number_of_services) {
+            throw std::out_of_range("Service index out of range");
+        }
+        return Services[serviceIndex].serviceID;
+    } catch (const json::exception& e) {
+        throw std::runtime_error("Error getting serviceID: " + std::string(e.what()));
+    }
+}
+
 
 std::string TrainServiceParser::getCoaches(size_t serviceIndex, bool addText) {
     std::lock_guard<std::mutex> lock(dataMutex);

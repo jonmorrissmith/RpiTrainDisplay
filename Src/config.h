@@ -15,6 +15,10 @@
 #include <fstream>
 #include <stdexcept>
 #include <iostream>
+#include <algorithm>
+#include <cctype>
+#include <memory>
+#include <utility>
 
 // Forward declaration for the debug printing macro
 extern bool debug_mode;
@@ -75,30 +79,61 @@ private:
         {"led-drop-priv-group", "daemon"}
     };
 
-    // Safe getter with default fallback
-    template <typename T>
-    T getWithDefault(const std::string& key, const T& defaultValue) const;
+    // Cache for frequently requested configuration values
+    mutable std::map<std::string, std::string> value_cache;
 
     // Private methods for matrix configuration
     void configureMatrixOptions(RGBMatrix::Options& options) const;
     void configureRuntimeOptions(RuntimeOptions& runtime_opt) const;
+    
+    // Helper to convert a string to lowercase for case-insensitive comparisons
+    std::string toLower(std::string str) const {
+        std::transform(str.begin(), str.end(), str.begin(),
+                      [](unsigned char c){ return std::tolower(c); });
+        return str;
+    }
+    
+    // Helper to trim whitespace from beginning and end of string
+    std::string trim(const std::string& str) const {
+        const auto strBegin = str.find_first_not_of(" \t\r\n");
+        if (strBegin == std::string::npos)
+            return ""; // no content
+
+        const auto strEnd = str.find_last_not_of(" \t\r\n");
+        const auto strRange = strEnd - strBegin + 1;
+
+        return str.substr(strBegin, strRange);
+    }
 
 public:
     Config();
 
     void loadFromFile(const std::string& filename);
+    
+    // Core configuration access method
     std::string get(const std::string& key) const;
+    
+    // Type-specific getters with default fallbacks
     std::string getStringWithDefault(const std::string& key, const std::string& defaultValue) const;
     int getInt(const std::string& key) const;
     int getIntWithDefault(const std::string& key, int defaultValue) const;
     bool getBool(const std::string& key) const;
     bool getBoolWithDefault(const std::string& key, bool defaultValue) const;
+    
+    // Configuration modification
     void set(const std::string& key, const std::string& value);
+    
+    // Clear cache after modifying configuration
+    void clearCache() const;
 
     // Method to create a configured matrix
     RGBMatrix* createMatrix() const;
+    
+    // Validates if a key exists
+    bool hasKey(const std::string& key) const;
+    
+    // Debug helper
+    void debugPrintConfig() const;
 };
 
 #endif // CONFIG_H
-
-
