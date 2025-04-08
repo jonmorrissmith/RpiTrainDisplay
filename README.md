@@ -237,8 +237,8 @@ With the monochrome configuration below a install on the Raspberry Pi used for t
 ## Installing the RGB Matrix Train Departure Board software ##
 Download and build from this repository
 ```
-git clone https://github.com/jonmorrissmith/RGB_Matrix_Train_Departure_Board
-cd RGB_Matrix_Train_Departure_Board
+git clone https://github.com/jonmorrissmith/RpiTrainDisplay
+cd RpiTrainDisplay
 chmod 755 setup.sh
 ./setup.sh
 ```
