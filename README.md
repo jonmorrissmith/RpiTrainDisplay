@@ -1,5 +1,5 @@
-# RGB Matrix Train Departure Board
-A way to build your own RGB matrix train departure board powered by a Raspberry Pi.
+# RpiTrainDisplay - LED Matrix Train Departure Board
+A way to build your own HUB75 RGB matrix train departure board powered by a Raspberry Pi.
 
 Configurable via a light-weight web-page or the command line.
 
