@@ -1,7 +1,9 @@
 # RpiTrainDisplay - LED Matrix Train Departure Board
 
 ## Current Status
-**NOTE** This project has been parked and won't be developed further (bar fixes).  Go to [The new version using Staff Data](https://github.com/jonmorrissmith/RPi_DepartureBoard).
+**NOTE** This project has been parked and won't be developed further (bar fixes).  
+
+**Go to [The new version using Staff Data](https://github.com/jonmorrissmith/RPi_DepartureBoard).**
 
 **Why is this being parked?** A great first iteration, however limited by the data available via the Public Departure Board API and required a re-write to optimise performance so the Staff API (which provides much more detail) could be used.
 
